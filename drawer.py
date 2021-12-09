@@ -67,10 +67,10 @@ def arrow_dyn2(xStart, xEnd, fig, ax, arrow_size, arrow_width, arrow_color, zOrd
         xF = [eqsol.solF(xA[0], xA[1], sf, af)[1][0], eqsol.solF(xA[0], xA[1], sf, af)[1][1]]
         xB = [eqsol.solB(xF[0], xF[1], sf, cf)[0][0], eqsol.solB(xF[0], xF[1], sf, cf)[0][1]]
         xC = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
-        xD = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]] 
+        xD = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
     xs = [x0[0], xA[0]]
     ys = [x0[1], xA[1]]
-    arrLine = plt.plot(xs, ys, color=arrow_color, zorder=zOrder)
+    arrLine = plt.plot(xs, ys, color=arrow_color, zorder=zOrder, clip_on=False)
     arrow = [xA, xC, xB, xD]
     verts = []
     patches = []
@@ -97,22 +97,22 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
         pt1 = eqsol.p_to_sim(1,0)
         pt2 = eqsol.p_to_sim(0,1)
         pt3 = eqsol.p_to_sim(0,0)
-        lbl1 = ax.annotate(strat[0], (pt1[0] - 0.01, pt1[1] + 0.04), fontsize=fontSize, zorder = zOrder)
-        lbl2 = ax.annotate(strat[1], (pt2[0] - 0.05, pt2[1] - 0.01), fontsize=fontSize, zorder = zOrder)
-        lbl3 = ax.annotate(strat[2], (pt3[0] + 0.02, pt3[1] - 0.01), fontsize=fontSize, zorder = zOrder)
+        lbl1 = ax.annotate(strat[0], (pt1[0] - 0.01, pt1[1] - 0.04), fontsize=fontSize, zorder = zOrder)
+        lbl2 = ax.annotate(strat[1], (pt2[0] - 0.08, pt2[1] - 0.0), fontsize=fontSize, zorder = zOrder)
+        lbl3 = ax.annotate(strat[2], (pt3[0] + 0.12, pt3[1] - 0.01), fontsize=fontSize, zorder = zOrder)
         xs = [[pt1[0], pt2[0]], [pt1[0], pt3[0]], [pt2[0], pt3[0]]]
         ys = [[pt1[1], pt2[1]], [pt1[1], pt3[1]], [pt2[1], pt3[1]]]
-        bdr1 = plt.plot(xs[0], ys[0], color='black', zorder=zOrder, alpha=1)
-        bdr2 = plt.plot(xs[1], ys[1], color='black', zorder=zOrder, alpha=1)
-        bdr3 = plt.plot(xs[2], ys[2], color='black', zorder=zOrder, alpha=1)
+        bdr1 = plt.plot(xs[0], ys[0], color='black', zorder=zOrder, alpha=1, clip_on=False)
+        bdr2 = plt.plot(xs[1], ys[1], color='black', zorder=zOrder, alpha=1, clip_on=False)
+        bdr3 = plt.plot(xs[2], ys[2], color='black', zorder=zOrder, alpha=1, clip_on=False)
         return bdr1+bdr2+bdr3 + [lbl1] + [lbl2] + [lbl3]
     elif payMtx[0].shape == (2, 2):
         ax.set_xlabel(strat[0], fontsize = fontSize)
         ax.set_ylabel(strat[1], fontsize = fontSize)
-        bdr1 = plt.plot([0, 1], [0, 0], color='black', zorder=zOrder, alpha=1)
-        bdr2 = plt.plot([1, 1], [0, 1], color='black', zorder=zOrder, alpha=1)
-        bdr3 = plt.plot([1, 0], [1, 1], color='black', zorder=zOrder, alpha=1)
-        bdr4 = plt.plot([0, 0], [1, 0], color='black', zorder=zOrder, alpha=1)
+        bdr1 = plt.plot([0, 1], [0, 0], color='black', zorder=zOrder, alpha=1, clip_on=False)
+        bdr2 = plt.plot([1, 1], [0, 1], color='black', zorder=zOrder, alpha=1, clip_on=False)
+        bdr3 = plt.plot([1, 0], [1, 1], color='black', zorder=zOrder, alpha=1, clip_on=False)
+        bdr4 = plt.plot([0, 0], [1, 0], color='black', zorder=zOrder, alpha=1, clip_on=False)
         return bdr1 + bdr2 + bdr3 + bdr4
     elif payMtx[0].shape == (4,):
         pt1 = eqsol.sim_to_p_2P4S(1, 0, 0)
@@ -128,10 +128,10 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
         zs = [[pt1[2], pt2[2]], [pt2[2], pt3[2]], [pt3[2], pt1[2]], [pt4[2], pt1[2]], [pt4[2], pt2[2]], [pt4[2], pt3[2]]]
         bdr = []
         for i in range(len(xs)):
-            bdr_i = plt.plot(xs[i], ys[i], zs[i], color='black', zorder=zOrder, alpha=1)
-            bdr.append(bdr_i)  
+            bdr_i = plt.plot(xs[i], ys[i], zs[i], color='black', zorder=zOrder, alpha=1, clip_on=False)
+            bdr.append(bdr_i)
         return bdr + [lbl1] + [lbl2] + [lbl3] + [lbl4]
-        
+
 
 def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd):
     """Draws trajectories in the simplex, given a starting point"""
@@ -153,8 +153,8 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
             cPt = eqsol.p_to_sim(pt[0],pt[1])
             solXrev.append(cPt[0])
             solYrev.append(cPt[1])
-        psol = plt.plot(solX, solY, color=col, zorder=zd)
-        psolRev = plt.plot(solXrev, solYrev, color=col, zorder=zd)
+        psol = plt.plot(solX, solY, color=col, zorder=zd, clip_on=False)
+        psolRev = plt.plot(solXrev, solYrev, color=col, zorder=zd, clip_on=False)
         dirs = arrow_dyn2([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
 #        dirsRev = arrow_dyn2([solXrev[math.floor(parr[0]*len(solXrev))], solYrev[math.floor(parr[0]*len(solXrev))]],[solXrev[math.floor(parr[0]*len(solXrev))+1], solYrev[math.floor(parr[0]*len(solXrev))+1]],fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
         for i in range(1, len(parr)):
@@ -171,8 +171,8 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
 #        solZ = [0 for i in range(len(solX))]
         solXrev=solRev[:,0]
         solYrev=solRev[:,1]
-        psol = plt.plot(solX,solY,color=col,zorder=zd)
-        psolRev = plt.plot(solXrev,solYrev,color=col,zorder=zd)
+        psol = plt.plot(solX,solY,color=col,zorder=zd, clip_on=False)
+        psolRev = plt.plot(solXrev,solYrev,color=col,zorder=zd, clip_on=False)
         dirs = arrow_dyn2([solX[math.floor(parr[0]*len(solX))],solY[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1],solY[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=col, zOrder=zd)
 #        dirsRev = arrow_dyn2([solXrev[math.floor(parr[0]*len(solXrev))],solYrev[math.floor(parr[0]*len(solXrev))]], [solXrev[math.floor(parr[0]*len(solXrev))+1],solYrev[math.floor(parr[0]*len(solXrev))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize,arrow_color=col,zOrder=zd)
         for i in range(1, len(parr)):
@@ -203,7 +203,7 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
         psol = ax.plot(solX, solY, solZ, linewidth = 0.8, color=col, zorder=zd)
         psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth = 0.8, color='orange', zorder=zd)
         dirs = arrow_dyn3([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))], solZ[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1], solZ[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
-        
+
 #        dirsRev = arrow_dyn3([solXrev[math.floor(parr[0]*len(solXrev))], solYrev[math.floor(parr[0]*len(solXrev))], solZrev[math.floor(parr[0]*len(solXrev))]],[solXrev[math.floor(parr[0]*len(solXrev))+1], solYrev[math.floor(parr[0]*len(solXrev))+1], solZrev[math.floor(parr[0]*len(solXrev))+1]],fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='g', zOrder=zd)
         for i in range(1, len(parr)-1):
             dirs = dirs + arrow_dyn3([solX[math.floor(parr[i]*len(solX))], solY[math.floor(parr[i]*len(solX))], solZ[math.floor(parr[i]*len(solX))]],[solX[math.floor(parr[i]*len(solX))+1], solY[math.floor(parr[i]*len(solX))+1], solZ[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='r', zOrder=zd)
@@ -222,7 +222,7 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
     undet = []  # list of equilibria with both 0 eigenvalues
     numEqs = []
     numEig = []
-    
+
     nuEqsRaw = eqsol.solGame(payMtx) #Computes equilibria of the replicator dynamics
     if payMtx[0].shape == (3,):
         for i in range(len(nuEqsRaw)): # Checks that all equilibria are within the simplex
@@ -244,12 +244,12 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
                     M[i][j] = valuedJC[i][j]
             w, v = np.linalg.eig(M)
             numEig.append(w)
-                
+
     elif payMtx[0].shape == (2, 2): # Same thing but for other type of game
         for i in range(len(nuEqsRaw)):
             if (0 <=  nuEqsRaw[i][0] <= 1 and 0 <=  nuEqsRaw[i][1] <= 1):
                 numEqs += [[nuEqsRaw[i][0],nuEqsRaw[i][1]]]
-        for i in range(len(numEqs)): 
+        for i in range(len(numEqs)):
             if (numEqs[i][0].imag !=0 or numEqs[i][1].imag != 0):
                 numEqs[i][0] = 99
                 numEqs[i][1] = 99
@@ -265,7 +265,7 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
                     M[i][j] = valuedJC[i][j]
             w, v = np.linalg.eig(M)
             numEig.append(w)
-    
+
     elif payMtx[0].shape == (4,):
         for i in range(len(nuEqsRaw)): # Checks that all equilibria are within the simplex
             if (0 <=  nuEqsRaw[i][0] <= 1 and 0 <=  nuEqsRaw[i][1] <= 1 and 0 <=  nuEqsRaw[i][2] <= 1 and nuEqsRaw[i][0] + nuEqsRaw[i][1] + nuEqsRaw[i][2]<= 1):
@@ -287,12 +287,12 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
                     M[i][j] = valuedJC[i][j]
             w, v = np.linalg.eig(M)
             numEig.append(w)
-        
+
     for i in range(len(numEqs)): # Classify equilibria
         numEqs[i] = [round(num, 10) for num in numEqs[i]]
         numEig[i] = [round(num, 12) for num in numEig[i]]
         if payMtx[0].shape == (2, 2): point_to_plot = np.array([numEqs[i][0], numEqs[i][1]])
-        elif payMtx[0].shape == (3,): 
+        elif payMtx[0].shape == (3,):
             point_to_plot = np.array(eqsol.p_to_sim(numEqs[i][0] , numEqs[i][1]))
             numEqs[i].append(1 - numEqs[i][0] - numEqs[i][1])
         elif payMtx[0].shape == (4,): point_to_plot = np.array(eqsol.sim_to_p_2P4S(numEqs[i][0] , numEqs[i][1], numEqs[i][2]))
@@ -308,7 +308,7 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
                     if l1.imag !=0:
                         centre.append(point_to_plot)
                     else: undet.append(point_to_plot)
-                
+
     #Plot equilibria
     saddlexs, saddleys, saddlezs = [], [], []
     sinkxs, sinkys, sinkzs = [], [], []
@@ -345,23 +345,23 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
 #    ax.scatter(saddlexs, saddleys, saddlezs, s=ptSize, color=colSdl, marker='o', edgecolors='black', alpha=1, depthshade=False, zorder=zd)
 #    ax.scatter(centrexs, centreys, centrezs, s=ptSize, color='orange', marker='*', edgecolors='black', alpha=1, depthshade=False, zorder=zd)
 #    ax.scatter(undetxs, undetys, undetzs, s=ptSize, color='red', marker='x', edgecolors='black', alpha=1, depthshade=False, zorder=zd)
-    ax.scatter(sinkxs, sinkys, s=ptSize, color=colSnk, marker='o', edgecolors='black', alpha=1, zorder=zd)
-    ax.scatter(sourcexs, sourceys, s=ptSize, color=colSce, marker='o', edgecolors='black', alpha=1, zorder=zd)
-    ax.scatter(saddlexs, saddleys, s=ptSize, color=colSdl, marker='o', edgecolors='black', alpha=1, zorder=zd)
-    ax.scatter(centrexs, centreys, s=ptSize, color='orange', marker='*', edgecolors='black', alpha=1, zorder=zd)
-    ax.scatter(undetxs, undetys, s=ptSize, color='red', marker='o', edgecolors='black', alpha=1, zorder=zd)
+    ax.scatter(sinkxs, sinkys, s=ptSize, color=colSnk, marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+    ax.scatter(sourcexs, sourceys, s=ptSize, color=colSce, marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+    ax.scatter(saddlexs, saddleys, s=ptSize, color=colSdl, marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+    ax.scatter(centrexs, centreys, s=ptSize, color='orange', marker='*', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+    ax.scatter(undetxs, undetys, s=ptSize, color='red', marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
     if payMtx[0].shape == (4,):
-        ax.scatter(sinkxs, sinkys, sinkzs, s=ptSize, color=colSnk, marker='o', edgecolors='black', alpha=1, zorder=zd)
-        ax.scatter(sourcexs, sourceys, sourcezs, s=ptSize, color=colSce, marker='o', edgecolors='black', alpha=1, zorder=zd)
-        ax.scatter(saddlexs, saddleys, saddlezs, s=ptSize, color=colSdl, marker='o', edgecolors='black', alpha=1, zorder=zd)
-        ax.scatter(centrexs, centreys, centrezs, s=ptSize, color='orange', marker='*', edgecolors='black', alpha=1, zorder=zd)
-        ax.scatter(undetxs, undetys, undetzs, s=ptSize, color='red', marker='o', edgecolors='black', alpha=1, zorder=zd)
+        ax.scatter(sinkxs, sinkys, sinkzs, s=ptSize, color=colSnk, marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+        ax.scatter(sourcexs, sourceys, sourcezs, s=ptSize, color=colSce, marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+        ax.scatter(saddlexs, saddleys, saddlezs, s=ptSize, color=colSdl, marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+        ax.scatter(centrexs, centreys, centrezs, s=ptSize, color='orange', marker='*', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
+        ax.scatter(undetxs, undetys, undetzs, s=ptSize, color='red', marker='o', edgecolors='black', alpha=1, zorder=zd, clip_on=False)
 #    return [pSink] + [pSource] + [pSaddle] + [pUndet]
     return [source] + [saddle] + [sink] + [centre] + [undet]
-        
+
 
 def matrix_to_colors(matrix, cmap):
-    """Converts a matrix into a RGBA color map.""" 
+    """Converts a matrix into a RGBA color map."""
     color_dimension = matrix # It must be in 2D - as for "X, Y, Z".
     minn, maxx = color_dimension.min(), color_dimension.max()
     norm = matplotlib.colors.Normalize(minn, maxx)
@@ -377,5 +377,5 @@ def speed_plot(x_region, y_region, step, payMtx, ax, cmap, levels, zorder):
     X, Y = np.meshgrid(x, y)
     X, Y = eqsol.outofbounds_reproject(X, Y)
     C = eqsol.speedGrid(X, Y, payMtx)
-    surf = ax.contourf(X, Y, C, levels=levels, cmap=cmap, corner_mask = False, alpha=0.9)
+    surf = ax.contourf(X, Y, C, levels=levels, cmap=cmap, corner_mask = False, alpha=0.9, clip_on=False)
     return surf

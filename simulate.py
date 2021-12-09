@@ -8,7 +8,7 @@ STATUS : - To add : - for the executable simulation : user input payoff matrices
                                                       better toggle and idle of plotting options
                                                       user interface (buttons, slides)
                     - add functions to simulate and save simulation results (when no graph is wanted)
-                    
+
 """
 
 import time
@@ -37,7 +37,7 @@ def exec_sim():
         At2 = [5.4, 4.1, 0]
         Ot3 = [6.5, 2, 0]
         At3 = [6.5, 3.7, 0]
-        
+
         res1 = drawer.arrow_dyn3(Ot, At, fig, ax, 1, 0.33, 'purple', zOrder=3)
         res2 = drawer.arrow_dyn3(Ot2, At2, fig, ax, 1, 0.33, 'orange', zOrder=3)
         res3 = drawer.arrow_dyn3(Ot3, At3, fig, ax, 1, 0.33, 'black', zOrder=3)
@@ -123,14 +123,14 @@ def exec_sim():
             drawer.trajectory([0, 0.5], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
-            
+
         else:
             print(" /!\ No trajectory has been set for this example /!\ ")
             drawer.setSimplex(['A','B','C'], pMrps, ax, 13, 53)
 #            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
-    
-        
+
+
     elif test == "2P2S":
         print("2P2S :", param.dict_2P2S)
         example = abs(int(input("-> Please enter the desired example ID :")))
@@ -158,7 +158,7 @@ def exec_sim():
             drawer.trajectory([0.8,0.1], pMrps, param.step,[0.001], 30,fig, ax,'blue', param.arrowSize, param.arrowWidth, 20)
             drawer.trajectory([0.1,0.8], pMrps, param.step,[0.001], 30,fig, ax,'blue', param.arrowSize, param.arrowWidth, 20)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 54)
-    
+
     elif test == "2P4S":
         print("2P4S :", param.dict_2P4S)
         example = abs(int(input("-> Please enter the desired example ID :")))
@@ -194,5 +194,3 @@ def exec_sim():
     print("-----------------------------------------------------")
     print("Execution time : %s seconds" % round((time.time() - start_time), 3))
     return None
-
-    
