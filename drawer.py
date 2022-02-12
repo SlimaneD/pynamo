@@ -97,9 +97,9 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
         pt1 = eqsol.p_to_sim(1,0)
         pt2 = eqsol.p_to_sim(0,1)
         pt3 = eqsol.p_to_sim(0,0)
-        lbl1 = ax.annotate(strat[0], (pt1[0] - 0.01, pt1[1] - 0.04), fontsize=fontSize, zorder = zOrder)
-        lbl2 = ax.annotate(strat[1], (pt2[0] - 0.08, pt2[1] - 0.0), fontsize=fontSize, zorder = zOrder)
-        lbl3 = ax.annotate(strat[2], (pt3[0] + 0.12, pt3[1] - 0.01), fontsize=fontSize, zorder = zOrder)
+        lbl1 = ax.annotate(strat[0], (pt1[0] - 0.01, pt1[1] + 0.04), fontsize=fontSize, zorder = zOrder)
+        lbl2 = ax.annotate(strat[1], (pt2[0] - 0.05, pt2[1] - 0.01), fontsize=fontSize, zorder = zOrder)
+        lbl3 = ax.annotate(strat[2], (pt3[0] + 0.03, pt3[1] - 0.01), fontsize=fontSize, zorder = zOrder)
         xs = [[pt1[0], pt2[0]], [pt1[0], pt3[0]], [pt2[0], pt3[0]]]
         ys = [[pt1[1], pt2[1]], [pt1[1], pt3[1]], [pt2[1], pt3[1]]]
         bdr1 = plt.plot(xs[0], ys[0], color='black', zorder=zOrder, alpha=1, clip_on=False)
