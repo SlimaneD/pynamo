@@ -133,11 +133,12 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
         return bdr + [lbl1] + [lbl2] + [lbl3] + [lbl4]
 
 
-def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd):
+def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd, arrow_color=None):
     """Draws trajectories in the simplex, given a starting point"""
     t = np.linspace(0, Tmax, int(Tmax/step))
     #nb_increments = int(Tmax/step)
     if payMtx[0].shape == (3,): #S_2P3S
+        eff_arrow_color = arrow_color if arrow_color is not None else (col if col is not None else 'k')
         x0, y0 = X0
         sol = odeint(dynamics.repDyn3, [x0, y0], t, (payMtx,))
         solRev = odeint(dynamics.repDyn3Rev, [x0, y0], t, (payMtx,))
@@ -155,14 +156,15 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
             solYrev.append(cPt[1])
         psol = plt.plot(solX, solY, color=col, zorder=zd, clip_on=False)
         psolRev = plt.plot(solXrev, solYrev, color=col, zorder=zd, clip_on=False)
-        dirs = arrow_dyn2([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
+        dirs = arrow_dyn2([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
 #        dirsRev = arrow_dyn2([solXrev[math.floor(parr[0]*len(solXrev))], solYrev[math.floor(parr[0]*len(solXrev))]],[solXrev[math.floor(parr[0]*len(solXrev))+1], solYrev[math.floor(parr[0]*len(solXrev))+1]],fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
         for i in range(1, len(parr)):
-            dirs = dirs + arrow_dyn2([solX[math.floor(parr[i]*len(solX))], solY[math.floor(parr[i]*len(solX))]],[solX[math.floor(parr[i]*len(solX))+1], solY[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
+            dirs = dirs + arrow_dyn2([solX[math.floor(parr[i]*len(solX))], solY[math.floor(parr[i]*len(solX))]],[solX[math.floor(parr[i]*len(solX))+1], solY[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
 #            dirsRev = dirsRev + arrow_dyn2([solXrev[math.floor(parr[i]*len(solXrev))+1], solYrev[math.floor(parr[i]*len(solXrev))+1]], [solXrev[math.floor(parr[i]*len(solXrev))], solYrev[math.floor(parr[i]*len(solXrev))]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
 #        return (psol + psolRev + dirs + dirsRev)
         return (psol + psolRev + dirs)
     elif payMtx[0].shape == (2, 2): #AS_2P2S
+        eff_arrow_color = arrow_color if arrow_color is not None else (col if col is not None else 'k')
         x0, y0 = X0
         sol = odeint(dynamics.testrep, [x0, y0], t, (payMtx,))
         solRev = odeint(dynamics.testrepRev, [x0, y0], t, (payMtx,))
@@ -173,12 +175,13 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
         solYrev=solRev[:,1]
         psol = plt.plot(solX,solY,color=col,zorder=zd, clip_on=False)
         psolRev = plt.plot(solXrev,solYrev,color=col,zorder=zd, clip_on=False)
-        dirs = arrow_dyn2([solX[math.floor(parr[0]*len(solX))],solY[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1],solY[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=col, zOrder=zd)
+        dirs = arrow_dyn2([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
 #        dirsRev = arrow_dyn2([solXrev[math.floor(parr[0]*len(solXrev))],solYrev[math.floor(parr[0]*len(solXrev))]], [solXrev[math.floor(parr[0]*len(solXrev))+1],solYrev[math.floor(parr[0]*len(solXrev))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize,arrow_color=col,zOrder=zd)
         for i in range(1, len(parr)):
-            dirs = dirs+arrow_dyn2([solX[math.floor(parr[i]*len(solX))],solY[math.floor(parr[i]*len(solX))]], [solX[math.floor(parr[i]*len(solX))+1],solY[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize,arrow_color=col,zOrder=zd)
+            dirs = dirs + arrow_dyn2([solX[math.floor(parr[i]*len(solX))], solY[math.floor(parr[i]*len(solX))]],[solX[math.floor(parr[i]*len(solX))+1], solY[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
 #            dirsRev = dirsRev + arrow_dyn2([solXrev[math.floor(parr[i]*len(solXrev))+1],solYrev[math.floor(parr[i]*len(solXrev))+1]], [solXrev[math.floor(parr[i]*len(solXrev))],solYrev[math.floor(parr[i]*len(solXrev))]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=col, zOrder=zd)
     elif payMtx[0].shape == (4,):
+        eff_arrow_color = arrow_color if arrow_color is not None else 'k'
         x0, y0, z0 = X0
         sol = odeint(dynamics.repDyn4, [x0, y0, z0], t, (payMtx,))
         solRev = odeint(dynamics.repDyn4Rev, [x0, y0, z0], t, (payMtx,))
@@ -201,13 +204,13 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
 #            psol = ax.plot(solX[i:i+lines_step], solY[i:i+lines_step], solZ[i:i+lines_step], linewidth = 1.5, color=colz, zorder=zd)
             #psolRev = ax.plot(solXrev[i:i+2], solYrev[i:i+2], solZrev[i:i+2], color=colz, zorder=zd)
         psol = ax.plot(solX, solY, solZ, linewidth = 0.8, color=col, zorder=zd)
-        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth = 0.8, color='orange', zorder=zd)
-        dirs = arrow_dyn3([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))], solZ[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1], solZ[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
+        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth = 0.8, color=col, zorder=zd)
+        dirs = arrow_dyn3([solX[math.floor(parr[0]*len(solX))], solY[math.floor(parr[0]*len(solX))], solZ[math.floor(parr[0]*len(solX))]], [solX[math.floor(parr[0]*len(solX))+1], solY[math.floor(parr[0]*len(solX))+1], solZ[math.floor(parr[0]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
 
 #        dirsRev = arrow_dyn3([solXrev[math.floor(parr[0]*len(solXrev))], solYrev[math.floor(parr[0]*len(solXrev))], solZrev[math.floor(parr[0]*len(solXrev))]],[solXrev[math.floor(parr[0]*len(solXrev))+1], solYrev[math.floor(parr[0]*len(solXrev))+1], solZrev[math.floor(parr[0]*len(solXrev))+1]],fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='g', zOrder=zd)
         for i in range(1, len(parr)-1):
-            dirs = dirs + arrow_dyn3([solX[math.floor(parr[i]*len(solX))], solY[math.floor(parr[i]*len(solX))], solZ[math.floor(parr[i]*len(solX))]],[solX[math.floor(parr[i]*len(solX))+1], solY[math.floor(parr[i]*len(solX))+1], solZ[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='r', zOrder=zd)
-        dirs = dirs + arrow_dyn3([solX[math.floor(parr[-1]*len(solX))], solY[math.floor(parr[-1]*len(solX))], solZ[math.floor(parr[-1]*len(solX))]], [solX[math.floor(parr[-1]*len(solX))+1], solY[math.floor(parr[-1]*len(solX))+1], solZ[math.floor(parr[-1]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='k', zOrder=zd)
+            dirs = dirs + arrow_dyn3([solX[math.floor(parr[i]*len(solX))], solY[math.floor(parr[i]*len(solX))], solZ[math.floor(parr[i]*len(solX))]],[solX[math.floor(parr[i]*len(solX))+1], solY[math.floor(parr[i]*len(solX))+1], solZ[math.floor(parr[i]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
+        dirs = dirs + arrow_dyn3([solX[math.floor(parr[-1]*len(solX))], solY[math.floor(parr[-1]*len(solX))], solZ[math.floor(parr[-1]*len(solX))]], [solX[math.floor(parr[-1]*len(solX))+1], solY[math.floor(parr[-1]*len(solX))+1], solZ[math.floor(parr[-1]*len(solX))+1]], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color=eff_arrow_color, zOrder=zd)
 #            dirsRev = dirsRev + arrow_dyn3([solXrev[math.floor(parr[i]*len(solXrev))+1], solYrev[math.floor(parr[i]*len(solXrev))+1], 0], [solXrev[math.floor(parr[i]*len(solXrev))], solYrev[math.floor(parr[i]*len(solXrev))], 0], fig, ax, arrow_width=arrWidth, arrow_size=arrSize, arrow_color='g', zOrder=zd)
 #        return (psol + psolRev + dirs + dirsRev)
         #return(psol+psolRev+dirs)
@@ -288,26 +291,50 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
             w, v = np.linalg.eig(M)
             numEig.append(w)
 
+    def _round_value(val, ndigits):
+        """Round floats or complex numbers while preserving tiny imaginary parts."""
+        if np.iscomplexobj(val):
+            real_part = round(float(np.real(val)), ndigits)
+            imag_part = round(float(np.imag(val)), ndigits)
+            if imag_part == 0:
+                return real_part
+            return complex(real_part, imag_part)
+        return round(float(val), ndigits)
+
     for i in range(len(numEqs)): # Classify equilibria
-        numEqs[i] = [round(num, 10) for num in numEqs[i]]
-        numEig[i] = [round(num, 12) for num in numEig[i]]
+        numEqs[i] = [_round_value(num, 10) for num in numEqs[i]]
+        numEig[i] = [_round_value(num, 12) for num in numEig[i]]
         if payMtx[0].shape == (2, 2): point_to_plot = np.array([numEqs[i][0], numEqs[i][1]])
         elif payMtx[0].shape == (3,):
             point_to_plot = np.array(eqsol.p_to_sim(numEqs[i][0] , numEqs[i][1]))
             numEqs[i].append(1 - numEqs[i][0] - numEqs[i][1])
         elif payMtx[0].shape == (4,): point_to_plot = np.array(eqsol.sim_to_p_2P4S(numEqs[i][0] , numEqs[i][1], numEqs[i][2]))
-        print("FP", [round(num, 2) for num in numEqs[i]], "| eigVs", [round(num, 2) for num in numEig[i]])
+        print("FP", [_round_value(num, 2) for num in numEqs[i]], "| eigVs", [_round_value(num, 2) for num in numEig[i]])
         if (0<=numEqs[i][0]<=1 and 0<=numEqs[i][1]<=1):
             l1, l2 = numEig[i][0], numEig[i][1]
             suml, prodl = l1+l2, l1*l2
-            if prodl<0: saddle.append(point_to_plot)
+            if isinstance(prodl, complex):
+                if np.imag(prodl) != 0:
+                    centre.append(point_to_plot)
+                    continue
+                prodl = np.real(prodl)
+            if isinstance(suml, complex):
+                if np.imag(suml) != 0:
+                    centre.append(point_to_plot)
+                    continue
+                suml = np.real(suml)
+            if prodl<0:
+                saddle.append(point_to_plot)
             else:
-                if suml>0: source.append(point_to_plot)
-                elif suml<0: sink.append(point_to_plot)
+                if suml>0:
+                    source.append(point_to_plot)
+                elif suml<0:
+                    sink.append(point_to_plot)
                 else:
-                    if l1.imag !=0:
+                    if getattr(l1, "imag", 0) != 0:
                         centre.append(point_to_plot)
-                    else: undet.append(point_to_plot)
+                    else:
+                        undet.append(point_to_plot)
 
     #Plot equilibria
     saddlexs, saddleys, saddlezs = [], [], []
@@ -370,12 +397,12 @@ def matrix_to_colors(matrix, cmap):
     fcolors = m.to_rgba(color_dimension)
     return fcolors, m
 
-def speed_plot(x_region, y_region, step, payMtx, ax, cmap, levels, zorder):
+def speed_plot(x_region, y_region, step, payMtx, ax, cmap, levels, zd):
     """Plots game dynamics (speed of movement in the simplex)"""
     x = np.linspace(x_region[0], x_region[1], step)
     y = np.linspace(y_region[0], y_region[1], step)
     X, Y = np.meshgrid(x, y)
     X, Y = eqsol.outofbounds_reproject(X, Y)
     C = eqsol.speedGrid(X, Y, payMtx)
-    surf = ax.contourf(X, Y, C, levels=levels, cmap=cmap, corner_mask = False, alpha=0.9, clip_on=False)
+    surf = ax.contourf(X, Y, C, levels=levels, cmap=cmap, corner_mask = False, alpha=0.9, zorder=zd)
     return surf

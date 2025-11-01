@@ -22,14 +22,42 @@ import drawer
 import parameters as param
 
 
+def _choose_game(test_key):
+    """Interactively select a Game entry for the requested test key."""
+    games = param.available_games(test_key)
+    if not games:
+        raise ValueError(f"No games available for test '{test_key}'.")
+
+    options = {idx: game.name for idx, game in games.items()}
+    print(f"{test_key} :", options)
+
+    while True:
+        try:
+            example = abs(int(input("-> Please enter the desired example ID :")))
+        except ValueError:
+            print("Invalid example ID. Please enter a positive integer.")
+            continue
+
+        game = games.get(example)
+        if game is None:
+            print(f"Example {example} not available. Available IDs: {sorted(games.keys())}")
+            continue
+
+        return example, game
+
+
 
 def exec_sim():
+    start_time = time.time()
     print("TEST :", param.dict_test)
     test = param.dict_test[int(input("-> Please enter the desired test ID :"))]
     print("----------------------------------------------------")
     if test == "arrow":
         fig = plt.figure()
-        ax = fig.gca(projection = '3d', xlabel='x axis', ylabel = 'y axis', zlabel = 'z axis')
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_xlabel("x axis")
+        ax.set_ylabel("y axis")
+        ax.set_zlabel("z axis")
         print("Testing : {}".format(test))
         Ot = [-4, 3, 0]
         At = [5.4, 3, 0]
@@ -47,11 +75,10 @@ def exec_sim():
             color = (random.random(), random.random(), random.random())
             res.append(drawer.arrow_dyn3([random.randint(-5,5),random.randint(-5,5), 0],[random.randint(-5,5),random.randint(-5,5), 0], fig, ax, 1,0.33,color,zOrder=3))
     elif test == "2P3S":
-        print("2P3S :", param.dict_2P3S)
-        example = abs(int(input("-> Please enter the desired example ID :")))
+        example, game = _choose_game(test)
+        pMrps = game.payoff_data
         print("-----------------------------------------------------")
-        pMrps = param.PAYMTX_2P3S[example - 1]
-        print("PAYOFF MATRIX : {} -- {}".format(test, param.dict_2P3S[example]))
+        print("PAYOFF MATRIX : {} -- {}".format(test, game.name))
         print(pMrps)
         print("-----------------------------------------------------")
         print("EQUILIBRIA CHARACTERISTICS :")
@@ -59,32 +86,29 @@ def exec_sim():
         plt.axis('off')
         ax.set_aspect(1)
         start_time = time.time()
+        drawer.setSimplex(game.strategy_labels, pMrps, ax, 13, 53)
         if example == 1:
-            drawer.setSimplex(['$R$','$P$','$S$'], pMrps, ax, 13, 53)
             drawer.trajectory([0.9, 0.05], pMrps, param.step, [0.01, 0.06, 0.12, 0.2], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.5, 0], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0,0.5], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.5, 0.5], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
-            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
+            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, 50, 50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
         elif example == 2:
-            drawer.setSimplex(['1','2','3'], pMrps, ax, 13, 53)
             drawer.trajectory([0.9, 0.05], pMrps, param.step, [0.0001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.5, 0], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0,0.5], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.5, 0.5], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.3, 0.3], pMrps, param.step, [0.0001], 10, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
-            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
+            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, 50, 50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
         elif example == 3:
-            drawer.setSimplex(['R','P','S'], pMrps, ax, 13, 53)
             drawer.trajectory([0.5, 0.25], pMrps, param.step, [0.01], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.7, 0.1], pMrps, param.step, [0.0001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
-            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
+            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, 50, 50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
         elif example == 4:
-            drawer.setSimplex(['1','2','3'], pMrps, ax, 13, 53)
-            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
+            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, 50, 50)
             drawer.trajectory([0.438, 0.120], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.7, 0.18], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.7, 0.11], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
@@ -96,7 +120,6 @@ def exec_sim():
             drawer.trajectory([0.329, 0.163], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
         elif example == 5:
-            drawer.setSimplex(['1','2','3'], pMrps, ax, 13, 53)
             drawer.trajectory([0.2, 0.4], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.4, 0.2], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.4, 0.4], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
@@ -121,38 +144,36 @@ def exec_sim():
             drawer.trajectory([0.25, 0.75], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0.5, 0], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
             drawer.trajectory([0, 0.5], pMrps, param.step, [0.001], 50, fig, ax, 'black', param.arrowSize, param.arrowWidth, 53)
-            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
+            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, 50, 50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
 
         else:
-            print(" /!\ No trajectory has been set for this example /!\ ")
-            drawer.setSimplex(['A','B','C'], pMrps, ax, 13, 53)
-#            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, levels = 50, zorder=50)
+            print(" /!\\ No trajectory has been set for this example /!\\ ")
+            drawer.setSimplex(game.strategy_labels, pMrps, ax, 13, 53)
+#            drawer.speed_plot([0, 1], [0, np.sqrt(3/4)], 50, pMrps, ax, cm.coolwarm, 50, 50)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray', 'white', 80, 54)
 
 
     elif test == "2P2S":
-        print("2P2S :", param.dict_2P2S)
-        example = abs(int(input("-> Please enter the desired example ID :")))
+        example, game = _choose_game(test)
+        pMrps = game.payoff_data
         print("-----------------------------------------------------")
-        pMrps = param.PAYMTX_2P2S[example - 1]
-        print("PAYOFF MATRIX : {} -- {}".format(test, param.dict_2P2S[example]))
+        print("PAYOFF MATRIX : {} -- {}".format(test, game.name))
         print(pMrps[0], "PLAYER 1")
         print(pMrps[1], "PLAYER 2")
         print("-----------------------------------------------------")
         print("EQUILIBRIA CHARACTERISTICS :")
         fig, ax = plt.subplots()
-        ax.set_title('Phase diagram : {} -- {}'.format(test,param.dict_2P2S[example]), fontsize=14)
+        ax.set_title('Phase diagram : {} -- {}'.format(test, game.name), fontsize=14)
         ax.set_aspect(1)
         plt.axis('on')
         start_time = time.time()
+        drawer.setSimplex(game.strategy_labels, pMrps, ax, 16, 53)
         if example == 1:
-            drawer.setSimplex(['$p_1$', '$p_2$'], pMrps, ax, 16, 53)
             drawer.trajectory([0.6,0.2], pMrps, param.step, [0.0001], 10, fig, ax, 'blue', param.arrowSize, param.arrowWidth, 20)
             drawer.trajectory([0.8,0.1], pMrps, param.step, [0.01], 10, fig, ax, 'blue', param.arrowSize, param.arrowWidth, 20)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 54)
         if example == 2:
-            drawer.setSimplex(['$p_H$', '$p_D$'], pMrps, ax, 16, 53)
             drawer.trajectory([0.5,0.5], pMrps, param.step,[0.01], 10,fig, ax,'blue', param.arrowSize, param.arrowWidth, 20)
             drawer.trajectory([0.9,0.9], pMrps, param.step,[0.01], 10,fig, ax,'blue', param.arrowSize, param.arrowWidth, 20)
             drawer.trajectory([0.8,0.1], pMrps, param.step,[0.001], 30,fig, ax,'blue', param.arrowSize, param.arrowWidth, 20)
@@ -160,29 +181,29 @@ def exec_sim():
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 54)
 
     elif test == "2P4S":
-        print("2P4S :", param.dict_2P4S)
-        example = abs(int(input("-> Please enter the desired example ID :")))
+        example, game = _choose_game(test)
+        pMrps = game.payoff_data
         print("-----------------------------------------------------")
-        pMrps = param.PAYMTX_2P4S[example - 1]
-        print("PAYOFF MATRIX : {} -- {}".format(test, param.dict_2P4S[example]))
+        print("PAYOFF MATRIX : {} -- {}".format(test, game.name))
         print(pMrps)
         print("-----------------------------------------------------")
         print("EQUILIBRIA CHARACTERISTICS :")
         fig = plt.figure()
-        ax = fig.gca(projection = '3d', xlabel='x axis', ylabel = 'y axis', zlabel = 'z axis')
-        ax.set_aspect(1)
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_xlabel("x axis")
+        ax.set_ylabel("y axis")
+        ax.set_zlabel("z axis")
+        ax.set_box_aspect((1, 1, 1))
         ax.set_axis_off()
         start_time = time.time()
+        drawer.setSimplex(game.strategy_labels, pMrps, ax, 13, 53)
         if example == 1:
-            drawer.setSimplex(['$R$', '$P$', '$S$', '$T$'], pMrps, ax, 13, 53)
-            #eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 2)
+            drawer.trajectory([0.3, 0.3, 0.1], pMrps, param.step, [0.1, 0.25, 0.5, 0.75, 0.9], 40, fig, ax, 'lightgrey', param.arrowSize * 10, param.arrowWidth * 10, 20)
         if example == 2:
-            drawer.setSimplex(["1", "2", "3", "4"], pMrps, ax, 13, 53)
             drawer.trajectory([0.2, 0.25, 0.25], pMrps, param.step, [0.0001, 0.01, 0.05, 0.08, 0.1, 0.15, 0.175, 0.2, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 0.99], 30, fig, ax,'lightgrey', param.arrowSize*10, param.arrowWidth*10, 20)
             #eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 2)
         if example == 3:
-            drawer.setSimplex(["$R$", "$P$", "$S$", "$T$"], pMrps, ax, 13, 53)
-            #eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 2)
+            drawer.trajectory([0.28, 0.28, 0.18], pMrps, param.step, [0.1, 0.25, 0.5, 0.75, 0.9], 40, fig, ax, 'lightgrey', param.arrowSize * 10, param.arrowWidth * 10, 20)
     if test != "arrow" and test != "2P4S":
         print("-----------------------------------------------------")
         print("EQUILIBRIA TYPES:")

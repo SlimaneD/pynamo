@@ -8,19 +8,95 @@ Status : OK
 """
 import numpy as np
 
-#Simulation dictionaries
-dict_test = {1: "arrow", 2: "2P3S", 3:"2P2S", 4: "2P4S"}
-dict_2P3S = {1 : "Good RPS", 2: "Zeeman", 3: "Standard RPS", 4: "123 Coordination", 5: "Pure Coordination", 6: "Webb 9.9"}
-dict_2P2S = {1 : "Matching Pennies", 2: "2-pop Hawk-Dove"}
-dict_2P4S = {1: "Hofbauer-Swinkels", 2: "Skyrms 1992", 3: "Bad RPS with a twin"}
+from game import Game, game_names
 
-#drawer parameters
-arrowSize= 1/25.0
-arrowWidth= (1/2)*arrowSize
+# Simulation dictionaries
+dict_test = {1: "arrow", 2: "2P3S", 3: "2P2S", 4: "2P4S"}
+
+GAMES_BY_TEST = {
+    "2P3S": {
+        1: Game(
+            "Good RPS",
+            np.array([[0, -1, 2], [2, 0, -1], [-1, 2, 0]]),
+            strategy_labels=["$R$", "$P$", "$S$"],
+            description="Rock–Paper–Scissors game with interior equilibrium.",
+        ),
+        2: Game(
+            "Zeeman",
+            np.array([[0, 6, -4], [-3, 0, 5], [-1, 3, 0]]),
+            strategy_labels=["1", "2", "3"],
+            description="Zeeman's example illustrating complex dynamics.",
+        ),
+        3: Game(
+            "Standard RPS",
+            np.array([[0, -1, 1], [1, 0, -1], [-1, 1, 0]]),
+            strategy_labels=["R", "P", "S"],
+        ),
+        4: Game(
+            "123 Coordination",
+            np.array([[1, 0, 0], [0, 2, 0], [0, 0, 3]]),
+            strategy_labels=["1", "2", "3"],
+        ),
+        5: Game(
+            "Pure Coordination",
+            np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            strategy_labels=["1", "2", "3"],
+        ),
+        6: Game(
+            "Webb 9.9",
+            np.array([[3, 0, 1], [0, 3, 1], [1, 1, 1]]),
+            strategy_labels=["A", "B", "C"],
+        ),
+    },
+    "2P2S": {
+        1: Game(
+            "Matching Pennies",
+            (
+                np.array([[1, -1], [-1, 1]]),
+                np.array([[-1, 1], [1, -1]]),
+            ),
+            strategy_labels=["$p_1$", "$p_2$"],
+            symmetric=False,
+        ),
+        2: Game(
+            "2-pop Hawk-Dove",
+            (
+                np.array([[-1, 5], [0, 2.5]]),
+                np.array([[-1, 5], [0, 2.5]]),
+            ),
+            strategy_labels=["$p_H$", "$p_D$"],
+            symmetric=False,
+        ),
+    },
+    "2P4S": {
+        1: Game(
+            "Hofbauer-Swinkels",
+            np.array([[0, 0, -1, 0], [0, 0, 0, -1], [-1, 0, 0, 0], [0, -1, 0, 0]]),
+            strategy_labels=["$R$", "$P$", "$S$", "$T$"],
+        ),
+        2: Game(
+            "Skyrms 1992",
+            np.array([[0, -12, 0, 22], [20, 0, 0, -10], [-21, -4, 0, 35], [10, -2, 2, 0]]),
+            strategy_labels=["1", "2", "3", "4"],
+        ),
+        3: Game(
+            "Bad RPS with a twin",
+            np.array([[0, -2, 1, 1], [1, 0, -2, -2], [-2, 1, 0, 0], [-2, 1, 0, 0]]),
+            strategy_labels=["$R$", "$P$", "$S$", "$T$"],
+        ),
+    },
+}
+
+dict_2P3S = game_names(GAMES_BY_TEST["2P3S"].items())
+dict_2P2S = game_names(GAMES_BY_TEST["2P2S"].items())
+dict_2P4S = game_names(GAMES_BY_TEST["2P4S"].items())
+
+# Drawer parameters
+arrowSize = 1 / 25.0
+arrowWidth = (1 / 2) * arrowSize
 step = 0.01
 
-#[np.array([[2.5,0],[5,-1]]),np.array([[2.5,0],[5,-1]])]
-#game parameters
-PAYMTX_2P3S = [np.array([[0,-1,2],[2,0,-1],[-1,2,0]]), np.array([[0,6,-4],[-3,0,5],[-1,3,0]]), np.array([[0,-1,1],[1,0,-1],[-1,1,0]]), np.array([[1,0,0],[0,2,0],[0,0,3]]), np.array([[1,0,0],[0,1,0],[0,0,1]]), np.array([[3,0,1],[0,3,1],[1,1,1]])]
-PAYMTX_2P2S = [[np.array([[1,-1],[-1,1]]),np.array([[-1,1],[1,-1]])], [np.array([[-1, 5], [0, 2.5]]),np.array([[-1, 5], [0, 2.5]])]]
-PAYMTX_2P4S = [np.array([[0, 0, -1, 0], [0, 0, 0, -1], [-1, 0, 0, 0], [0,-1, 0, 0]]), np.array([[0, -12, 0, 22], [20, 0, 0, -10], [-21, -4, 0, 35], [10, -2, 2, 0]]), np.array([[0, -2, 1, 1], [1, 0, -2, -2], [-2, 1, 0, 0], [-2, 1, 0, 0]])]
+
+def available_games(test_key):
+    """Return the mapping of example IDs to Game instances for the requested test."""
+    return GAMES_BY_TEST.get(test_key, {})

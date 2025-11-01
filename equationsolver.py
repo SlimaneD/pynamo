@@ -50,13 +50,13 @@ def solGame(payMtx):
         second_eq = dyn.repDyn3([x, y], t, payMtx)[1]
         third_eq = sum(dyn.repDyn3([x, y], t, payMtx))
         sol_dict = solve([first_eq, second_eq, third_eq], x, y, dict=True)
-        solutions = [[np.float(elt[x]), np.float(elt[y])] for elt in sol_dict]
+        solutions = [[float(elt[x]), float(elt[y])] for elt in sol_dict]
     elif payMtx[0].shape == (2, 2):
         payMtxS1, payMtxS2 = payMtx
         first_eq = dyn.repDyn22([x, y], t, payMtxS1)
         second_eq = dyn.repDyn22([y, x], t, payMtxS2)
         sol_dict = solve([first_eq, second_eq], x, y, dict=True)
-        solutions = [[np.float(elt[x]), np.float(elt[y])] for elt in sol_dict]
+        solutions = [[float(elt[x]), float(elt[y])] for elt in sol_dict]
     elif payMtx[0].shape == (4,):
         z = Symbol('z')
         first_eq = dyn.repDyn4([x, y, z], t, payMtx)[0]
@@ -67,7 +67,7 @@ def solGame(payMtx):
         solutions = []
         for elt in sol_dict:
             if len(elt)==3:
-                solutions.append([np.float(elt[x]), np.float(elt[y]), np.float(elt[z])])
+                solutions.append([float(elt[x]), float(elt[y]), float(elt[z])])
 #        solutions = [[np.float(elt[x]), np.float(elt[y]), np.float(elt[z])] for elt in sol_dict]
     return solutions
     
