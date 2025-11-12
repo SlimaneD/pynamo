@@ -9,7 +9,11 @@ import numpy as np
 
 PayoffMatrix = np.ndarray
 PayoffPair = Tuple[PayoffMatrix, PayoffMatrix]
-RawPayoff = Union[PayoffMatrix, Sequence[Sequence[float]], PayoffPair]
+RawPayoff = Union[
+    PayoffMatrix,
+    Sequence[Sequence[float]],
+    Sequence[PayoffMatrix],
+]
 
 
 class Game:
@@ -52,9 +56,12 @@ class Game:
         """Return the payoff matrix relevant for the requested player."""
         if self.symmetric:
             return self._payoff  # type: ignore[return-value]
-        if player not in (0, 1):
-            raise ValueError(f"Asymmetric games only support players 0 and 1. Received: {player}")
-        return self._payoff[player]  # type: ignore[index]
+        try:
+            return self._payoff[player]  # type: ignore[index]
+        except IndexError as exc:  # pragma: no cover - defensive
+            raise ValueError(
+                f"Player index {player} out of range for game '{self.name}'."
+            ) from exc
 
     def num_strategies(self) -> int:
         """Number of strategies available to each player."""
@@ -62,13 +69,43 @@ class Game:
             return self._payoff.shape[0]  # type: ignore[return-value]
         return self._payoff[0].shape[0]  # type: ignore[index]
 
+    def expected_payoffs(self, mixed_strategies: Sequence[Sequence[float]]) -> np.ndarray:
+        """Expected payoff to each pure strategy under the supplied mixed strategies."""
+        strategy_count = self.num_strategies()
+
+        if self.symmetric:
+            if len(mixed_strategies) != 1:
+                raise ValueError(
+                    "Symmetric games expect a single population mixed strategy."
+                )
+            sigma = self._as_probability_vector(mixed_strategies[0], strategy_count)
+            return self._payoff @ sigma  # type: ignore[return-value]
+
+        players = len(self._payoff)  # type: ignore[arg-type]
+        if len(mixed_strategies) != players:
+            raise ValueError(
+                f"Asymmetric games expect {players} mixed strategies (one per population)."
+            )
+
+        vectors = [
+            self._as_probability_vector(sigma, strategy_count) for sigma in mixed_strategies
+        ]
+
+        payoffs = np.empty((players, strategy_count), dtype=float)
+        for idx, matrix in enumerate(self._payoff):  # type: ignore[iterable]
+            result = matrix
+            for axis in reversed(range(players)):
+                if axis == idx:
+                    continue
+                result = np.tensordot(result, vectors[axis], axes=([axis], [0]))
+            payoffs[idx] = result
+        return payoffs
+
     def _normalise_payoff(
         self, payoff_matrices: RawPayoff
     ) -> Union[PayoffMatrix, PayoffPair]:
         if isinstance(payoff_matrices, tuple):
             matrices = tuple(self._to_numpy(matrix) for matrix in payoff_matrices)
-            if len(matrices) != 2:
-                raise ValueError("Asymmetric games must provide exactly two payoff matrices.")
             return matrices  # type: ignore[return-value]
         if isinstance(payoff_matrices, list) and payoff_matrices and isinstance(
             payoff_matrices[0], np.ndarray
@@ -76,17 +113,17 @@ class Game:
             matrices_tuple = tuple(self._to_numpy(matrix) for matrix in payoff_matrices)  # type: ignore[arg-type]
             if len(matrices_tuple) == 1:
                 return matrices_tuple[0]
-            if len(matrices_tuple) == 2:
-                return matrices_tuple  # type: ignore[return-value]
+            return matrices_tuple  # type: ignore[return-value]
         return self._to_numpy(payoff_matrices)  # type: ignore[arg-type]
 
     def _to_numpy(self, matrix: Union[PayoffMatrix, Sequence[Sequence[float]]]) -> PayoffMatrix:
         arr = np.asarray(matrix, dtype=float)
-        if arr.ndim != 2:
-            raise ValueError("Payoff matrices must be two-dimensional.")
-        rows, cols = arr.shape
-        if rows != cols:
-            raise ValueError("Payoff matrices must be square.")
+        if arr.ndim == 2:
+            rows, cols = arr.shape
+            if rows != cols:
+                raise ValueError("Payoff matrices must be square.")
+        elif arr.ndim < 2:
+            raise ValueError("Payoff arrays must have at least two dimensions.")
         return arr
 
     def _validate_dimensions(self) -> None:
@@ -94,9 +131,9 @@ class Game:
             if self._payoff.shape[0] < 2:  # type: ignore[index]
                 raise ValueError("Symmetric games must have at least two strategies.")
         else:
-            left, right = self._payoff  # type: ignore[assignment]
-            if left.shape != right.shape:
-                raise ValueError("Asymmetric games require payoff matrices of identical dimensions.")
+            shapes = {matrix.shape for matrix in self._payoff}  # type: ignore[iterable]
+            if len(shapes) != 1:
+                raise ValueError("All payoff tensors must share identical dimensions.")
 
     def _ensure_label_defaults(self) -> None:
         if self.strategy_labels:
@@ -106,8 +143,25 @@ class Game:
         default_labels = [f"S{i+1}" for i in range(count)]
         self.strategy_labels = default_labels
 
+    def _as_probability_vector(
+        self, strategy: Sequence[float], expected_size: int
+    ) -> np.ndarray:
+        vector = np.asarray(strategy, dtype=float)
+        if vector.ndim != 1:
+            raise ValueError("Mixed strategies must be one-dimensional vectors.")
+        if vector.size != expected_size:
+            raise ValueError(
+                f"Mixed strategy length {vector.size} incompatible with {expected_size} strategies."
+            )
+        if np.any(vector < -1e-12):
+            raise ValueError("Mixed strategies cannot have negative probabilities.")
+
+        total = vector.sum()
+        if not np.isclose(total, 1.0, atol=1e-8):
+            raise ValueError("Mixed strategies must sum to 1.")
+        return vector
+
 
 def game_names(games: Iterable[Tuple[int, Game]]) -> dict:
     """Return a simple id->name mapping derived from a catalogue of games."""
     return {idx: game.name for idx, game in games}
-

@@ -45,6 +45,7 @@ def solGame(payMtx):
     t = 0
     x = Symbol('x')
     y = Symbol('y')
+    solutions = []
     if payMtx[0].shape == (3,):
         first_eq = dyn.repDyn3([x, y], t, payMtx)[0]
         second_eq = dyn.repDyn3([x, y], t, payMtx)[1]
@@ -57,6 +58,28 @@ def solGame(payMtx):
         second_eq = dyn.repDyn22([y, x], t, payMtxS2)
         sol_dict = solve([first_eq, second_eq], x, y, dict=True)
         solutions = [[float(elt[x]), float(elt[y])] for elt in sol_dict]
+    elif payMtx[0].shape == (2, 2, 2):
+        z = Symbol('z')
+        first_eq = dyn.repDyn3Pop2([x, y, z], t, payMtx)[0]
+        second_eq = dyn.repDyn3Pop2([x, y, z], t, payMtx)[1]
+        third_eq = dyn.repDyn3Pop2([x, y, z], t, payMtx)[2]
+        sol_dict = solve([first_eq, second_eq, third_eq], x, y, z, dict=True)
+        solutions = []
+        for elt in sol_dict:
+            if len(elt) == 3:
+                solutions.append([float(elt[x]), float(elt[y]), float(elt[z])])
+        # ensure all pure profiles are included explicitly (replicator dynamics fixes)
+        from itertools import product
+
+        def _contains_vertex(vertex, acc):
+            for sol in acc:
+                if all(abs(sol[i] - vertex[i]) < 1e-9 for i in range(len(vertex))):
+                    return True
+            return False
+
+        for vertex in product((0.0, 1.0), repeat=3):
+            if not _contains_vertex(vertex, solutions):
+                solutions.append(list(vertex))
     elif payMtx[0].shape == (4,):
         z = Symbol('z')
         first_eq = dyn.repDyn4([x, y, z], t, payMtx)[0]
@@ -118,4 +141,16 @@ def speedGrid(X, Y, payMtx):
     for i in range(len(X)):
         for j in range(len(Y)):
             CALC[i][j] = speedS(X[i][j] , Y[i][j] , payMtx)
+    return CALC
+
+
+def speedGrid2P2S(U, V, payMtx):
+    "Fills a grid with speeds for 2P2S replicator dynamics."  # pragma: no cover - visual helper
+    CALC = np.zeros(U.shape)
+    for i in range(len(U)):
+        for j in range(len(V)):
+            x = U[i][j]
+            y = V[i][j]
+            dx, dy = dyn.repDyn22([x, y], 0, payMtx[0]), dyn.repDyn22([y, x], 0, payMtx[1])
+            CALC[i][j] = np.hypot(dx, dy)
     return CALC
