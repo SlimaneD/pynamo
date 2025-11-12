@@ -180,6 +180,45 @@ def exec_sim():
             drawer.trajectory([0.1,0.8], pMrps, param.step,[0.001], 30,fig, ax,'blue', param.arrowSize, param.arrowWidth, 20)
             eqs = drawer.equilibria(pMrps, ax, 'black', 'gray','white', 80, 54)
 
+    elif test == "3P2S":
+        print("3P2S :", param.dict_3P2S)
+        example, game = _choose_game(test)
+        payoffs = game.payoff_data
+        print("-----------------------------------------------------")
+        print("PAYOFF TENSORS : {} -- {}".format(test, game.name))
+        for idx, tensor in enumerate(payoffs):
+            print(f"PLAYER {idx + 1}")
+            print(tensor)
+        print("-----------------------------------------------------")
+        print("EQUILIBRIA CHARACTERISTICS :")
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_box_aspect((1, 1, 1))
+        drawer.setSimplex(game.strategy_labels, payoffs, ax, 13, 53)
+        start_time = time.time()
+        ax.view_init(elev=30, azim=35)
+        starting_points = [
+            ([0.2, 0.2, 0.2], 'tab:blue'),
+            ([0.6, 0.3, 0.4], 'tab:orange'),
+            ([0.3, 0.6, 0.3], 'tab:green'),
+        ]
+        for start, color in starting_points:
+            drawer.trajectory(
+                start,
+                payoffs,
+                param.step,
+                [0.05, 0.15, 0.35, 0.55, 0.75, 0.9],
+                40,
+                fig,
+                ax,
+                color,
+                param.arrowSize * 8,
+                param.arrowWidth * 8,
+                22,
+                arrow_color=color,
+            )
+        eqs = drawer.equilibria(payoffs, ax, 'black', 'gray', 'white', 60, 54)
+
     elif test == "2P4S":
         example, game = _choose_game(test)
         pMrps = game.payoff_data

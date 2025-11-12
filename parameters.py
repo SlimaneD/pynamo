@@ -10,8 +10,18 @@ import numpy as np
 
 from game import Game, game_names
 
+
+def _coordination_tensor():
+    tensor = np.zeros((2, 2, 2))
+    for a1 in range(2):
+        for a2 in range(2):
+            for a3 in range(2):
+                if a1 == a2 == a3:
+                    tensor[a1, a2, a3] = 1
+    return tensor
+
 # Simulation dictionaries
-dict_test = {1: "arrow", 2: "2P3S", 3: "2P2S", 4: "2P4S"}
+dict_test = {1: "arrow", 2: "2P3S", 3: "2P2S", 4: "2P4S", 5: "3P2S"}
 
 GAMES_BY_TEST = {
     "2P3S": {
@@ -85,11 +95,21 @@ GAMES_BY_TEST = {
             strategy_labels=["$R$", "$P$", "$S$", "$T$"],
         ),
     },
+    "3P2S": {
+        1: Game(
+            "Coordination Cube",
+            tuple(_coordination_tensor() for _ in range(3)),
+            strategy_labels=["$x_A$", "$x_B$", "$x_C$"],
+            description="Three-population coordination where everyone prefers matching actions.",
+            symmetric=False,
+        ),
+    },
 }
 
 dict_2P3S = game_names(GAMES_BY_TEST["2P3S"].items())
 dict_2P2S = game_names(GAMES_BY_TEST["2P2S"].items())
 dict_2P4S = game_names(GAMES_BY_TEST["2P4S"].items())
+dict_3P2S = game_names(GAMES_BY_TEST["3P2S"].items())
 
 # Drawer parameters
 arrowSize = 1 / 25.0
