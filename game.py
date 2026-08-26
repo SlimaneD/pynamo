@@ -6,7 +6,10 @@ from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-
+# Explain what the following type aliases represent in the context of the Game class.
+# PayoffMatrix: A 2D numpy array representing the payoff matrix for a player in a game. In a symmetric game, there is only one payoff matrix that applies to both players. In an asymmetric game, there are two payoff matrices, one for each player.
+# PayoffPair: A tuple containing two PayoffMatrix objects, representing the payoff matrices for both players in an asymmetric game.
+# RawPayoff: A type that can be either a single PayoffMatrix, a sequence of sequences of floats (which can be converted to a PayoffMatrix), or a sequence of PayoffMatrix objects (which can be converted to a PayoffPair).
 PayoffMatrix = np.ndarray
 PayoffPair = Tuple[PayoffMatrix, PayoffMatrix]
 RawPayoff = Union[
@@ -51,6 +54,11 @@ class Game:
     def payoff_data(self) -> Union[PayoffMatrix, PayoffPair]:
         """Return the underlying payoff representation."""
         return self._payoff
+
+    @property
+    def game_class(self) -> str:
+        """Return the currently supported pyNamo game class identifier."""
+        return infer_game_class(self._payoff)
 
     def payoff_for_player(self, player: int = 0) -> PayoffMatrix:
         """Return the payoff matrix relevant for the requested player."""
@@ -165,3 +173,24 @@ class Game:
 def game_names(games: Iterable[Tuple[int, Game]]) -> dict:
     """Return a simple id->name mapping derived from a catalogue of games."""
     return {idx: game.name for idx, game in games}
+
+
+def infer_game_class(game_or_payoffs) -> str:
+    """Infer the supported pyNamo game class from a Game or payoff data."""
+    payoffs = getattr(game_or_payoffs, "payoff_data", game_or_payoffs)
+
+    if isinstance(payoffs, np.ndarray):
+        if payoffs.shape == (3, 3):
+            return "2P3S"
+        if payoffs.shape == (4, 4):
+            return "2P4S"
+        return "unsupported"
+
+    if isinstance(payoffs, (tuple, list)) and payoffs:
+        first = payoffs[0]
+        if first.shape == (2, 2):
+            return "2P2S"
+        if first.shape == (2, 2, 2):
+            return "3P2S"
+
+    return "unsupported"

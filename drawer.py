@@ -10,10 +10,9 @@ Status : - need to check for presence of LaTeX installation on the device
 """
 
 import math
+import warnings
 import numpy as np
 from scipy.integrate import odeint
-from sympy import Matrix
-from sympy.abc import x, y, z
 
 import matplotlib
 matplotlib.rcParams['text.usetex'] = True
@@ -23,8 +22,103 @@ from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from mpl_toolkits.mplot3d import Axes3D
 
-import equationsolver as eqsol
+import analysis
 import dynamics
+from game import infer_game_class
+
+
+class PlottingWarning(RuntimeWarning):
+    """Warning raised when plotting compresses analysis categories."""
+
+
+warnings.simplefilter("always", PlottingWarning)
+
+
+DEFAULT_PLOT_STYLE = {
+    "figsize": (6, 6),
+    "view_elev": 25,
+    "view_azim": 35,
+    "simplex_font_size": 13,
+    "simplex_zorder": 30,
+    "show_speed": True,
+    "speed_grid": 60,
+    "speed_cmap": plt.cm.Spectral,
+    "speed_levels": 12,
+    "speed_zorder": 10,
+    "show_trajectories": True,
+    "trajectory_step": 0.02,
+    "trajectory_arrows": [0.02],
+    "Tmax": 45,
+    "trajectory_color": "black",
+    "arrow_size": 0.04,
+    "arrow_width": 0.015,
+    "trajectory_zorder": 20,
+    "show_equilibria": True,
+    "sink_color": "black",
+    "saddle_color": "gray",
+    "source_color": "white",
+    "centre_color": None,
+    "equilibrium_size": 80,
+    "equilibrium_zorder": 40,
+}
+
+
+def p_to_sim(x, y):
+    """Convert simplex coordinates to 2P3S plotting plane."""
+    return [-0.5 * x - y + 1, (np.sqrt(3) / 2) * x]
+
+
+def sim_to_p(x, y):
+    """Convert 2P3S plotting plane coordinates back to simplex coordinates."""
+    return [2 / 3 * np.sqrt(3) * y, -1 / 3 * np.sqrt(3) * y - x + 1]
+
+
+def sim_to_p_2P4S(x, y, z):
+    """Convert simplex coordinates to 2P4S 3D plotting space."""
+    return [0.5 * (-y + z + 1), np.sqrt(3) / 4 * (x - y - z + 1), -np.sqrt(13) / 4 * (x + y + z - 1)]
+
+
+def p_to_sim_2P4S(x, y, z):
+    """Convert 2P4S plotting space coordinates back to simplex coordinates."""
+    return [2 * (np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z), -x + np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z + 1, x + np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z]
+
+
+def _solF(x_A, y_A, s, a):
+    """Coordinates of the arrow tip offset from (x_A, y_A) along slope s with length a."""
+    return [
+        [((s**2 + 1) * x_A - np.sqrt(s**2 + 1) * a) / (s**2 + 1), -((np.sqrt(s**2 + 1) * a * s - (s**2 + 1) * y_A) / (s**2 + 1))],
+        [((s**2 + 1) * x_A + np.sqrt(s**2 + 1) * a) / (s**2 + 1), ((np.sqrt(s**2 + 1) * a * s + (s**2 + 1) * y_A) / (s**2 + 1))],
+    ]
+
+
+def _solB(x_F, y_F, s, c):
+    """Coordinates of the arrow base points around (x_F, y_F) with width c along slope s."""
+    return [
+        [((s**2 + 1) * x_F - np.sqrt(s**2 + 1) * c) / (s**2 + 1), -((np.sqrt(s**2 + 1) * c * s - (s**2 + 1) * y_F) / (s**2 + 1))],
+        [((s**2 + 1) * x_F + np.sqrt(s**2 + 1) * c) / (s**2 + 1), ((np.sqrt(s**2 + 1) * c * s + (s**2 + 1) * y_F) / (s**2 + 1))],
+    ]
+
+
+def _solC(x_F, y_F, i_p, s, c):
+    """Coordinates of the lateral arrow head points C/D at perpendicular offset c."""
+    root = np.sqrt(
+        -s**2 * y_F**2
+        + (c**2 - i_p**2) * s**2
+        + 2 * i_p * s * x_F
+        + c**2
+        - x_F**2
+        + 2 * (i_p * s**2 - s * x_F) * y_F
+    )
+    return [
+        [
+            (s**2 * x_F + i_p * s - s * y_F - root * s) / (s**2 + 1),
+            (i_p * s**2 - s * x_F + y_F + root) / (s**2 + 1),
+        ],
+        [
+            (s**2 * x_F + i_p * s - s * y_F + root * s) / (s**2 + 1),
+            (i_p * s**2 - s * x_F + y_F - root) / (s**2 + 1),
+        ],
+    ]
 
 
 def arrow_dyn2(xStart, xEnd, fig, ax, arrow_size, arrow_width, arrow_color, zOrder):
@@ -59,16 +153,16 @@ def arrow_dyn2(xStart, xEnd, fig, ax, arrow_size, arrow_width, arrow_color, zOrd
         xD = [xF[0],xF[1]+cf]
     elif(xA[0]>x0[0]):
         sf = (xA[1]-x0[1])/(xA[0]-x0[0])
-        xF = [eqsol.solF(xA[0], xA[1], sf, af)[0][0], eqsol.solF(xA[0], xA[1], sf, af)[0][1]]
-        xB = [eqsol.solB(xF[0], xF[1], sf, cf)[1][0], eqsol.solB(xF[0], xF[1], sf, cf)[1][1]]
-        xC = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
-        xD = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
+        xF = [_solF(xA[0], xA[1], sf, af)[0][0], _solF(xA[0], xA[1], sf, af)[0][1]]
+        xB = [_solB(xF[0], xF[1], sf, cf)[1][0], _solB(xF[0], xF[1], sf, cf)[1][1]]
+        xC = [_solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], _solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
+        xD = [_solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], _solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
     elif(xA[0]<x0[0]):
         sf = (xA[1]-x0[1])/(xA[0]-x0[0])
-        xF = [eqsol.solF(xA[0], xA[1], sf, af)[1][0], eqsol.solF(xA[0], xA[1], sf, af)[1][1]]
-        xB = [eqsol.solB(xF[0], xF[1], sf, cf)[0][0], eqsol.solB(xF[0], xF[1], sf, cf)[0][1]]
-        xC = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
-        xD = [eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], eqsol.solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
+        xF = [_solF(xA[0], xA[1], sf, af)[1][0], _solF(xA[0], xA[1], sf, af)[1][1]]
+        xB = [_solB(xF[0], xF[1], sf, cf)[0][0], _solB(xF[0], xF[1], sf, cf)[0][1]]
+        xC = [_solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], _solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
+        xD = [_solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], _solC(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
     xs = [x0[0], xA[0]]
     ys = [x0[1], xA[1]]
     arrLine = plt.plot(xs, ys, color=arrow_color, zorder=zOrder, clip_on=False)
@@ -89,7 +183,20 @@ def arrow_dyn3(xStart, xEnd, fig, ax, arrow_size, arrow_width, arrow_color, zOrd
     u = xEnd[0] - xStart[0]
     v = xEnd[1] - xStart[1]
     w = xEnd[2] - xStart[2]
-    quiv = ax.quiver(xStart[0], xStart[1], xStart[2], u, v, w, length=0.002, arrow_length_ratio=15, pivot='tip', color = arrow_color, zorder=zOrder, normalize = True)
+    quiv = ax.quiver(
+        xStart[0],
+        xStart[1],
+        xStart[2],
+        u,
+        v,
+        w,
+        length=0.002,
+        arrow_length_ratio=15,
+        pivot='tip',
+        color=arrow_color,
+        zorder=zOrder,
+        normalize=True,
+    )
     return [quiv]
 
 
@@ -101,9 +208,9 @@ def _is_three_population_cube(payMtx):
 def setSimplex(strat, payMtx, ax, fontSize, zOrder):
     """Draws the simplex frame."""
     if payMtx[0].shape == (3,):
-        pt1 = eqsol.p_to_sim(1, 0)
-        pt2 = eqsol.p_to_sim(0, 1)
-        pt3 = eqsol.p_to_sim(0, 0)
+        pt1 = p_to_sim(1, 0)
+        pt2 = p_to_sim(0, 1)
+        pt3 = p_to_sim(0, 0)
         lbl1 = ax.annotate(strat[0], (pt1[0] - 0.01, pt1[1] + 0.04), fontsize=fontSize, zorder=zOrder)
         lbl2 = ax.annotate(strat[1], (pt2[0] - 0.05, pt2[1] - 0.01), fontsize=fontSize, zorder=zOrder)
         lbl3 = ax.annotate(strat[2], (pt3[0] + 0.03, pt3[1] - 0.01), fontsize=fontSize, zorder=zOrder)
@@ -131,7 +238,23 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
         ax.set_xlabel(strat[0], fontsize=fontSize)
         ax.set_ylabel(strat[1], fontsize=fontSize)
         ax.set_zlabel(strat[2], fontsize=fontSize)
+        ax.set_xticks([0, 1])
+        ax.set_yticks([0, 1])
+        ax.set_zticks([0, 1])
+        ax.set_xticklabels(["0", "1"], fontsize=fontSize - 2)
+        ax.set_yticklabels(["0", "1"], fontsize=fontSize - 2)
+        ax.set_zticklabels(["0", "1"], fontsize=fontSize - 2)
+        # Hide panes/axis lines but keep ticks/labels for a minimal look.
         ax.grid(False)
+        for axis in (ax.xaxis, ax.yaxis, ax.zaxis):
+            axis.pane.set_facecolor((1, 1, 1, 0))
+            axis.pane.set_edgecolor((1, 1, 1, 0))
+        # Hide axis lines using _axinfo (mplot3d-friendly)
+        for axis in ("xaxis", "yaxis", "zaxis"):
+            try:
+                getattr(ax, axis)._axinfo["axisline"]["linewidth"] = 0.0
+            except Exception:
+                pass
         corners = [
             (0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0),
             (0, 0, 1), (1, 0, 1), (0, 1, 1), (1, 1, 1),
@@ -148,10 +271,11 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
             artists += ax.plot([s[0], e[0]], [s[1], e[1]], [s[2], e[2]], color='black', zorder=zOrder, alpha=1)
         return artists
     if payMtx[0].shape == (4,):
-        pt1 = eqsol.sim_to_p_2P4S(1, 0, 0)
-        pt2 = eqsol.sim_to_p_2P4S(0, 1, 0)
-        pt3 = eqsol.sim_to_p_2P4S(0, 0, 1)
-        pt4 = eqsol.sim_to_p_2P4S(0, 0, 0)
+        pt1 = sim_to_p_2P4S(1, 0, 0)
+        pt2 = sim_to_p_2P4S(0, 1, 0)
+        pt3 = sim_to_p_2P4S(0, 0, 1)
+        pt4 = sim_to_p_2P4S(0, 0, 0)
+        ax.grid(False)
         lbl1 = ax.text(pt1[0], pt1[1] + 0.05, pt1[2], strat[0], fontsize=fontSize, zorder=zOrder)
         lbl2 = ax.text(pt2[0] - 0.05, pt2[1], pt2[2], strat[1], fontsize=fontSize, zorder=zOrder)
         lbl3 = ax.text(pt3[0] + 0.05, pt3[1] - 0.022, pt3[2], strat[2], fontsize=fontSize, zorder=zOrder)
@@ -169,8 +293,8 @@ def setSimplex(strat, payMtx, ax, fontSize, zOrder):
 def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd, arrow_color=None):
     """Draws trajectories in the simplex, given a starting point."""
     t = np.linspace(0, Tmax, int(Tmax / step))
-    line_color = col or 'black'
-    arrow_col = arrow_color if arrow_color is not None else (col if col is not None else 'k')
+    line_color = col if col is not None else 'black'
+    arrow_col = arrow_color if arrow_color is not None else line_color
 
     if payMtx[0].shape == (3,):  # symmetric 2P3S
         x0, y0 = X0
@@ -181,11 +305,11 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
         solXrev = []
         solYrev = []
         for pt in sol:
-            cPt = eqsol.p_to_sim(pt[0], pt[1])
+            cPt = p_to_sim(pt[0], pt[1])
             solX.append(cPt[0])
             solY.append(cPt[1])
         for pt in solRev:
-            cPt = eqsol.p_to_sim(pt[0], pt[1])
+            cPt = p_to_sim(pt[0], pt[1])
             solXrev.append(cPt[0])
             solYrev.append(cPt[1])
         psol = plt.plot(solX, solY, color=line_color, zorder=zd, clip_on=False)
@@ -207,8 +331,8 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
 
     if payMtx[0].shape == (2, 2):  # asymmetric 2P2S
         x0, y0 = X0
-        sol = odeint(dynamics.testrep, [x0, y0], t, (payMtx,))
-        solRev = odeint(dynamics.testrepRev, [x0, y0], t, (payMtx,))
+        sol = odeint(dynamics.repDyn22_vector, [x0, y0], t, (payMtx,))
+        solRev = odeint(dynamics.repDyn22_vector_rev, [x0, y0], t, (payMtx,))
         solX, solY = sol[:, 0], sol[:, 1]
         solXrev, solYrev = solRev[:, 0], solRev[:, 1]
         psol = plt.plot(solX, solY, color=line_color, zorder=zd, clip_on=False)
@@ -235,7 +359,7 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
         solX, solY, solZ = sol[:, 0], sol[:, 1], sol[:, 2]
         solXrev, solYrev, solZrev = solRev[:, 0], solRev[:, 1], solRev[:, 2]
         psol = ax.plot(solX, solY, solZ, linewidth=0.8, color=line_color, zorder=zd)
-        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth=0.4, color=line_color, zorder=zd)
+        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth=0.8, color=line_color, zorder=zd)
         dirs = []
         for frac in parr:
             base = min(max(int(frac * (len(solX) - 1)), 0), len(solX) - 2)
@@ -258,17 +382,17 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
         solX, solY, solZ = [], [], []
         solXrev, solYrev, solZrev = [], [], []
         for pt in sol:
-            cPt = eqsol.sim_to_p_2P4S(pt[0], pt[1], pt[2])
+            cPt = sim_to_p_2P4S(pt[0], pt[1], pt[2])
             solX.append(cPt[0])
             solY.append(cPt[1])
             solZ.append(cPt[2])
         for pt in solRev:
-            cPt = eqsol.sim_to_p_2P4S(pt[0], pt[1], pt[2])
+            cPt = sim_to_p_2P4S(pt[0], pt[1], pt[2])
             solXrev.append(cPt[0])
             solYrev.append(cPt[1])
             solZrev.append(cPt[2])
         psol = ax.plot(solX, solY, solZ, linewidth=0.8, color=line_color, zorder=zd)
-        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth=0.4, color=line_color, zorder=zd)
+        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth=0.8, color=line_color, zorder=zd)
         dirs = []
         for frac in parr:
             base = min(max(int(frac * (len(solX) - 1)), 0), len(solX) - 2)
@@ -287,185 +411,72 @@ def trajectory(X0, payMtx, step, parr, Tmax, fig, ax, col, arrSize, arrWidth, zd
     return None
 
 
-def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
-    """Computes the equilibrium points of the game and characterizes them."""
+def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd, colCtr=None):
+    """Classify and plot equilibria for the given game/payoffs."""
     source, sink, saddle, centre, undet = [], [], [], [], []
-    numEqs, numEig = [], []
     three_pop = _is_three_population_cube(payMtx)
+    colCtr = colSce if colCtr is None else colCtr
 
-    nuEqsRaw = eqsol.solGame(payMtx)
+    result = analysis.analyze_equilibria(payMtx)
+    unstable_plotted_as_source = False
 
-    if payMtx[0].shape == (3,):
-        for eq in nuEqsRaw:
-            if 0 <= eq[0] <= 1 and 0 <= eq[1] <= 1 and eq[0] + eq[1] <= 1:
-                numEqs.append([eq[0], eq[1]])
-        for eq in numEqs:
-            if getattr(eq[0], 'imag', 0) != 0 or getattr(eq[1], 'imag', 0) != 0:
-                eq[0], eq[1] = 99, 99
-        for eq in numEqs:
-            t = 0
-            X = Matrix(dynamics.repDyn3([x, y], t, payMtx))
-            Y = Matrix([x, y])
-            JC = X.jacobian(Y)
-            valuedJC = np.array(JC.subs([(x, eq[0]), (y, eq[1])]))
-            M = np.array(valuedJC, dtype=float)
-            w, _ = np.linalg.eig(M)
-            numEig.append(w)
+    def _point_to_plot(record):
+        if result.game_class == "2P3S":
+            return np.array(p_to_sim(record.reduced_position[0], record.reduced_position[1]))
+        if result.game_class == "2P4S":
+            return np.array(
+                sim_to_p_2P4S(
+                    record.reduced_position[0],
+                    record.reduced_position[1],
+                    record.reduced_position[2],
+                )
+            )
+        return np.asarray(record.full_position, dtype=float)
 
-    elif payMtx[0].shape == (2, 2):
-        for eq in nuEqsRaw:
-            if 0 <= eq[0] <= 1 and 0 <= eq[1] <= 1:
-                numEqs.append([eq[0], eq[1]])
-        for eq in numEqs:
-            if getattr(eq[0], 'imag', 0) != 0 or getattr(eq[1], 'imag', 0) != 0:
-                eq[0], eq[1] = 99, 99
-        for eq in numEqs:
-            t = 0
-            X = Matrix(dynamics.testrep([x, y], t, payMtx))
-            Y = Matrix([x, y])
-            JC = X.jacobian(Y)
-            valuedJC = np.array(JC.subs([(x, eq[0]), (y, eq[1])]))
-            M = np.array(valuedJC, dtype=float)
-            w, _ = np.linalg.eig(M)
-            numEig.append(w)
-
-    elif three_pop:
-        for eq in nuEqsRaw:
-            coords = [float(np.real(c)) for c in eq]
-            if all(0 <= c <= 1 for c in coords):
-                numEqs.append(coords)
-                numEig.append(np.zeros(3))
-
-    elif payMtx[0].shape == (4,):
-        for eq in nuEqsRaw:
-            if 0 <= eq[0] <= 1 and 0 <= eq[1] <= 1 and 0 <= eq[2] <= 1 and eq[0] + eq[1] + eq[2] <= 1:
-                numEqs.append([eq[0], eq[1], eq[2]])
-        for eq in numEqs:
-            if any(getattr(val, 'imag', 0) != 0 for val in eq):
-                eq[0], eq[1], eq[2] = 99, 99, 99
-        for eq in numEqs:
-            t = 0
-            X = Matrix(dynamics.repDyn4([x, y, z], t, payMtx))
-            Y = Matrix([x, y, z])
-            JC = X.jacobian(Y)
-            valuedJC = np.array(JC.subs([(x, eq[0]), (y, eq[1]), (z, eq[2])]))
-            M = np.array(valuedJC, dtype=float)
-            w, _ = np.linalg.eig(M)
-            numEig.append(w)
-
-    def _round_value(val, ndigits):
-        if np.iscomplexobj(val):
-            real_part = round(float(np.real(val)), ndigits)
-            imag_part = round(float(np.imag(val)), ndigits)
-            if imag_part == 0:
-                return real_part
-            return complex(real_part, imag_part)
-        return round(float(val), ndigits)
-
-    def _jacobian_three_pop(point):
-        base = np.clip(np.asarray(point, dtype=float), 0.0, 1.0)
-        f0 = dynamics.repDyn3Pop2(base, 0, payMtx)
-        jac = np.zeros((3, 3), dtype=float)
-        eps = 1e-6
-        for axis in range(3):
-            pert = base.copy()
-            pert[axis] = np.clip(pert[axis] + eps, 0.0, 1.0)
-            f1 = dynamics.repDyn3Pop2(pert, 0, payMtx)
-            jac[:, axis] = (f1 - f0) / eps
-        return jac
-
-    def _classify_three_pop(point):
-        try:
-            jac = _jacobian_three_pop(point)
-            eigvals = np.linalg.eigvals(jac)
-        except Exception:
-            return 'undet'
-        real_parts = np.real(eigvals)
-        tol = 1e-6
-        if np.all(real_parts < -tol):
-            return 'sink'
-        if np.all(real_parts > tol):
-            return 'source'
-        if np.any(real_parts > tol) and np.any(real_parts < -tol):
-            return 'saddle'
-        if np.all(np.abs(real_parts) <= tol):
-            return 'centre'
-        return 'undet'
-
-    for i in range(len(numEqs)):
-        numEqs[i] = [_round_value(val, 10) for val in numEqs[i]]
-        if i < len(numEig):
-            numEig[i] = [_round_value(val, 12) for val in numEig[i]]
-        if payMtx[0].shape == (2, 2):
-            point_to_plot = np.array([numEqs[i][0], numEqs[i][1]])
-        elif payMtx[0].shape == (3,):
-            point_to_plot = np.array(eqsol.p_to_sim(numEqs[i][0], numEqs[i][1]))
-            numEqs[i].append(1 - numEqs[i][0] - numEqs[i][1])
-        elif three_pop:
-            point_to_plot = np.array(numEqs[i])
-            stability = _classify_three_pop(point_to_plot)
-            if stability == 'sink':
-                sink.append(point_to_plot)
-            elif stability == 'source':
-                source.append(point_to_plot)
-            elif stability == 'saddle':
-                saddle.append(point_to_plot)
-            elif stability == 'centre':
-                centre.append(point_to_plot)
-            else:
-                undet.append(point_to_plot)
-            continue
-        elif payMtx[0].shape == (4,):
-            point_to_plot = np.array(eqsol.sim_to_p_2P4S(numEqs[i][0], numEqs[i][1], numEqs[i][2]))
-        else:
-            continue
-
-        if payMtx[0].shape == (2, 2) or payMtx[0].shape == (3,):
-            l1, l2 = numEig[i][0], numEig[i][1]
-            suml, prodl = l1 + l2, l1 * l2
-            if isinstance(prodl, complex):
-                if np.imag(prodl) != 0:
-                    centre.append(point_to_plot)
-                    continue
-                prodl = np.real(prodl)
-            if isinstance(suml, complex):
-                if np.imag(suml) != 0:
-                    centre.append(point_to_plot)
-                    continue
-                suml = np.real(suml)
-            if prodl < 0:
-                saddle.append(point_to_plot)
-            else:
-                if suml > 0:
-                    source.append(point_to_plot)
-                elif suml < 0:
-                    sink.append(point_to_plot)
-                else:
-                    if getattr(l1, 'imag', 0) != 0:
-                        centre.append(point_to_plot)
-                    else:
-                        undet.append(point_to_plot)
-        else:
+    for record in result.records:
+        point_to_plot = _point_to_plot(record)
+        if record.stability == 'sink':
+            sink.append(point_to_plot)
+        elif record.stability == 'source':
+            source.append(point_to_plot)
+        elif record.stability == 'unstable':
+            source.append(point_to_plot)
+            unstable_plotted_as_source = True
+        elif record.stability == 'saddle':
+            saddle.append(point_to_plot)
+        elif record.stability == 'centre':
             centre.append(point_to_plot)
+        else:
+            undet.append(point_to_plot)
+
+    if unstable_plotted_as_source:
+        warnings.warn(
+            "At least one equilibrium is classified as 'unstable': linearization "
+            "proves it is not stable, but does not distinguish source from saddle. "
+            "For plotting compatibility, unstable equilibria are drawn with the "
+            "source color and returned in the source bucket.",
+            PlottingWarning,
+            stacklevel=2,
+        )
 
     def _to_raw(point):
-        if payMtx[0].shape == (3,):
-            r, p = eqsol.sim_to_p(point[0], point[1])
+        if result.game_class == "2P3S":
+            r, p = sim_to_p(point[0], point[1])
             return [r, p, 1 - r - p]
-        if payMtx[0].shape == (2, 2):
+        if result.game_class == "2P2S":
             return point.tolist()
-        if three_pop or payMtx[0].shape == (4,):
+        if three_pop or result.game_class == "2P4S":
             return point.tolist()
         return point.tolist()
 
     def _sphere_radius(size):
         return np.clip(np.sqrt(size) / 200.0, 0.01, 0.08)
 
-    def _plot_spheres(points, color):
+    def _plot_spheres(points, color, alpha=0.85):
         if points.size == 0:
             return
         radius = _sphere_radius(ptSize)
-        rgba = mcolors.to_rgba(color, alpha=0.85)
+        rgba = mcolors.to_rgba(color, alpha=alpha)
         u = np.linspace(0, 2 * np.pi, 24)
         v = np.linspace(0, np.pi, 12)
         for center in points:
@@ -506,6 +517,23 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
                 clip_on=False,
             )
 
+    def _scatter_undet(points):
+        if not points:
+            return
+        pts = np.array(points)
+        if three_pop or payMtx[0].shape == (4,):
+            _plot_spheres(pts, 'gray', alpha=0.45)
+        else:
+            ax.scatter(
+                pts[:, 0], pts[:, 1],
+                s=ptSize,
+                facecolors='none',
+                edgecolors='black',
+                alpha=1,
+                zorder=zd,
+                clip_on=False,
+            )
+
     raw_source = [_to_raw(pt) for pt in source]
     raw_saddle = [_to_raw(pt) for pt in saddle]
     raw_sink = [_to_raw(pt) for pt in sink]
@@ -515,10 +543,204 @@ def equilibria(payMtx, ax, colSnk, colSdl, colSce, ptSize, zd):
     _scatter(source, colSce)
     _scatter(saddle, colSdl)
     _scatter(sink, colSnk)
-    _scatter(centre, colSce)
-    _scatter(undet, colSnk)
+    _scatter(centre, colCtr)
+    _scatter_undet(undet)
 
     return [raw_source, raw_saddle, raw_sink, raw_centre, raw_undet]
+
+
+def plot_game(
+    game_or_payoffs,
+    *,
+    fig=None,
+    ax=None,
+    figsize=DEFAULT_PLOT_STYLE["figsize"],
+    view_elev=DEFAULT_PLOT_STYLE["view_elev"],
+    view_azim=DEFAULT_PLOT_STYLE["view_azim"],
+    xlabel=None,
+    ylabel=None,
+    zlabel=None,
+    starts=None,
+    random_state=None,
+    simplex_font_size=DEFAULT_PLOT_STYLE["simplex_font_size"],
+    simplex_zorder=DEFAULT_PLOT_STYLE["simplex_zorder"],
+    show_speed=DEFAULT_PLOT_STYLE["show_speed"],
+    speed_grid=DEFAULT_PLOT_STYLE["speed_grid"],
+    speed_cmap=DEFAULT_PLOT_STYLE["speed_cmap"],
+    speed_levels=DEFAULT_PLOT_STYLE["speed_levels"],
+    speed_zorder=DEFAULT_PLOT_STYLE["speed_zorder"],
+    show_trajectories=DEFAULT_PLOT_STYLE["show_trajectories"],
+    trajectory_step=DEFAULT_PLOT_STYLE["trajectory_step"],
+    trajectory_arrows=None,
+    Tmax=DEFAULT_PLOT_STYLE["Tmax"],
+    trajectory_color=DEFAULT_PLOT_STYLE["trajectory_color"],
+    arrow_size=DEFAULT_PLOT_STYLE["arrow_size"],
+    arrow_width=DEFAULT_PLOT_STYLE["arrow_width"],
+    trajectory_zorder=DEFAULT_PLOT_STYLE["trajectory_zorder"],
+    show_equilibria=DEFAULT_PLOT_STYLE["show_equilibria"],
+    sink_color=DEFAULT_PLOT_STYLE["sink_color"],
+    saddle_color=DEFAULT_PLOT_STYLE["saddle_color"],
+    source_color=DEFAULT_PLOT_STYLE["source_color"],
+    centre_color=DEFAULT_PLOT_STYLE["centre_color"],
+    equilibrium_size=DEFAULT_PLOT_STYLE["equilibrium_size"],
+    equilibrium_zorder=DEFAULT_PLOT_STYLE["equilibrium_zorder"],
+):
+    """Plot a supported game with simplex/cube, trajectories, and equilibria.
+
+    This is the high-level plotting entry point. The lower-level functions
+    remain available for users who need full manual control.
+    """
+    payoffs = _payoff_data(game_or_payoffs)
+    game_class = infer_game_class(game_or_payoffs)
+    labels = _strategy_labels(game_or_payoffs, game_class)
+    title = getattr(game_or_payoffs, "name", None)
+    trajectory_arrows = (
+        list(DEFAULT_PLOT_STYLE["trajectory_arrows"])
+        if trajectory_arrows is None
+        else trajectory_arrows
+    )
+
+    fig, ax = _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim)
+
+    setSimplex(labels, payoffs, ax, simplex_font_size, simplex_zorder)
+    _set_default_axes_style(ax, game_class, labels)
+    _apply_axis_label_overrides(ax, xlabel, ylabel, zlabel)
+
+    if show_speed and game_class in ("2P2S", "2P3S"):
+        x_region, y_region = _speed_regions(game_class)
+        speed_plot(
+            x_region=x_region,
+            y_region=y_region,
+            step=speed_grid,
+            ax=ax,
+            payMtx=payoffs,
+            cmap=speed_cmap,
+            levels=speed_levels,
+            zd=speed_zorder,
+        )
+
+    if show_equilibria:
+        equilibria(
+            payoffs,
+            ax,
+            colSnk=sink_color,
+            colSdl=saddle_color,
+            colSce=source_color,
+            colCtr=centre_color,
+            ptSize=equilibrium_size,
+            zd=equilibrium_zorder,
+        )
+
+    if show_trajectories:
+        starts = _default_starts(game_class, random_state) if starts is None else starts
+        trajectory_colors = _trajectory_colors(trajectory_color, len(starts))
+        for start, color in zip(starts, trajectory_colors):
+            trajectory(
+                start,
+                payoffs,
+                step=trajectory_step,
+                parr=trajectory_arrows,
+                Tmax=Tmax,
+                fig=fig,
+                ax=ax,
+                col=color,
+                arrSize=arrow_size,
+                arrWidth=arrow_width,
+                zd=trajectory_zorder,
+                arrow_color=color,
+            )
+
+    if title:
+        ax.set_title(title)
+
+    return fig, ax
+
+
+def _payoff_data(game_or_payoffs):
+    return getattr(game_or_payoffs, "payoff_data", game_or_payoffs)
+
+
+def _strategy_labels(game_or_payoffs, game_class):
+    labels = getattr(game_or_payoffs, "strategy_labels", None)
+    if labels:
+        return labels
+    if game_class == "2P2S":
+        return ["Strategy 1", "Strategy 2"]
+    if game_class == "3P2S":
+        return ["Population 1", "Population 2", "Population 3"]
+    if game_class == "2P4S":
+        return ["Strategy 1", "Strategy 2", "Strategy 3", "Strategy 4"]
+    return ["Strategy 1", "Strategy 2", "Strategy 3"]
+
+
+def _trajectory_colors(trajectory_color, count):
+    if mcolors.is_color_like(trajectory_color):
+        return [trajectory_color] * count
+    if len(trajectory_color) != count:
+        raise ValueError(
+            "trajectory_color must be a single Matplotlib color or a list of "
+            "colors with the same length as starts."
+        )
+    if not all(mcolors.is_color_like(color) for color in trajectory_color):
+        raise ValueError("Every entry in trajectory_color must be a Matplotlib color.")
+    return trajectory_color
+
+
+def _apply_axis_label_overrides(ax, xlabel, ylabel, zlabel):
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    if zlabel is not None and hasattr(ax, "set_zlabel"):
+        ax.set_zlabel(zlabel)
+
+
+def _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim):
+    if ax is not None:
+        return ax.figure, ax
+
+    if fig is None:
+        fig = plt.figure(figsize=figsize)
+
+    if game_class in ("2P4S", "3P2S"):
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_box_aspect((1, 1, 1))
+        ax.view_init(elev=view_elev, azim=view_azim)
+    else:
+        ax = fig.add_subplot(111)
+        ax.set_aspect(1)
+
+    return fig, ax
+
+
+def _set_default_axes_style(ax, game_class, labels):
+    if game_class == "2P2S":
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_aspect("equal", adjustable="box")
+        ax.set_xlabel(f"Population 1: Pr({labels[0]})")
+        ax.set_ylabel(f"Population 2: Pr({labels[0]})")
+    elif game_class == "2P3S":
+        ax.axis("off")
+
+
+def _speed_regions(game_class):
+    if game_class == "2P3S":
+        return [0, 1], [0, np.sqrt(3 / 4)]
+    return [0, 1], [0, 1]
+
+
+def _default_starts(game_class, random_state):
+    rng = np.random.default_rng(random_state)
+    if game_class == "2P3S":
+        return rng.dirichlet(np.ones(3), size=4)[:, :2].tolist()
+    if game_class == "2P4S":
+        return rng.dirichlet(np.ones(4), size=4)[:, :3].tolist()
+    if game_class in ("2P2S", "3P2S"):
+        return rng.uniform(0.05, 0.95, size=(4, 2 if game_class == "2P2S" else 3)).tolist()
+    raise ValueError(f"Unsupported game class: {game_class}")
+
+
 def matrix_to_colors(matrix, cmap):
     """Converts a matrix into a RGBA color map."""
     color_dimension = matrix # It must be in 2D - as for "X, Y, Z".
@@ -529,6 +751,70 @@ def matrix_to_colors(matrix, cmap):
     fcolors = m.to_rgba(color_dimension)
     return fcolors, m
 
+
+def simplexboundaries_bool(X, Y):
+    """Boolean mask for points lying outside the 2P3S simplex in plotting coordinates."""
+    mask = np.zeros(X.shape, dtype=bool)
+    for i in range(len(X)):
+        for j in range(len(X)):
+            if X[i, j] <= 0.5:
+                mask[i, j] = Y[i, j] > 2 * np.sqrt(3 / 4) * X[i, j]
+            elif X[i, j] > 0.5:
+                mask[i, j] = Y[i, j] > 2 * np.sqrt(3 / 4) * (1 - X[i, j])
+            else:
+                mask[i, j] = False
+    return mask
+
+
+def outofbounds_reproject(X, Y):
+    """Orthogonally project out-of-bounds grid points back to the 2P3S simplex."""
+    mask = simplexboundaries_bool(X, Y)
+    for i in range(len(X)):
+        for j in range(len(Y)):
+            if mask[i][j]:
+                if X[i, j] < 0.5:
+                    xB, yB = 0, 0
+                    xV, yV = 1, 2 * np.sqrt(3 / 4)
+                    BH = ((X[i, j] - xB) * xV + (Y[i, j] - yB) * yV) / (np.sqrt(xV**2 + yV**2))
+                    X[i, j] = xB + (BH / np.sqrt(xV**2 + yV**2)) * xV
+                    Y[i, j] = 2 * np.sqrt(3 / 4) * X[i, j]
+                elif X[i, j] > 0.5:
+                    xB, yB = 0.5, np.sqrt(3 / 4)
+                    xV, yV = 1, -2 * np.sqrt(3 / 4)
+                    BH = ((X[i, j] - xB) * xV + (Y[i, j] - yB) * yV) / (np.sqrt(xV**2 + yV**2))
+                    X[i, j] = xB + (BH / np.sqrt(xV**2 + yV**2)) * xV
+                    Y[i, j] = 2 * np.sqrt(3 / 4) * (1 - X[i, j])
+    return X, Y
+
+
+def speedS(x, y, payMtx):
+    """Speed magnitude of the 2P3S replicator dynamics at plotting coordinates (x, y)."""
+    calc = dynamics.repDyn3Speed(sim_to_p(x, y)[0], sim_to_p(x, y)[1], payMtx)
+    return np.linalg.norm(calc)
+
+
+def speedGrid(X, Y, payMtx):
+    """Fill a grid with speeds for 2P3S replicator dynamics."""
+    CALC = np.zeros(X.shape)
+    for i in range(len(X)):
+        for j in range(len(Y)):
+            CALC[i][j] = speedS(X[i][j], Y[i][j], payMtx)
+    return CALC
+
+
+def speedGrid2P2S(U, V, payMtx):
+    """Fill a grid with speeds for 2P2S replicator dynamics."""
+    CALC = np.zeros(U.shape)
+    for i in range(len(U)):
+        for j in range(len(V)):
+            x = U[i][j]
+            y = V[i][j]
+            dx = dynamics.repDyn22([x, y], 0, payMtx[0])
+            dy = dynamics.repDyn22([y, x], 0, payMtx[1])
+            CALC[i][j] = np.hypot(dx, dy)
+    return CALC
+
+
 def speed_plot(x_region, y_region, step, payMtx, ax, cmap, levels, zd):
     """Plots movement speed for supported games."""
     x = np.linspace(x_region[0], x_region[1], step)
@@ -536,8 +822,8 @@ def speed_plot(x_region, y_region, step, payMtx, ax, cmap, levels, zd):
     X, Y = np.meshgrid(x, y)
 
     if payMtx[0].shape == (3,):  # symmetric 2P3S
-        X, Y = eqsol.outofbounds_reproject(X, Y)
-        C = eqsol.speedGrid(X, Y, payMtx)
+        X, Y = outofbounds_reproject(X, Y)
+        C = speedGrid(X, Y, payMtx)
         surf = ax.contourf(
             X,
             Y,
@@ -551,7 +837,7 @@ def speed_plot(x_region, y_region, step, payMtx, ax, cmap, levels, zd):
         return surf
 
     if payMtx[0].shape == (2, 2):  # asymmetric 2P2S
-        C = eqsol.speedGrid2P2S(X, Y, payMtx)
+        C = speedGrid2P2S(X, Y, payMtx)
         surf = ax.contourf(
             X,
             Y,
