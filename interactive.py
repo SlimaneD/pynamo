@@ -1,14 +1,15 @@
 """Notebook widgets for exploring pyNamo replicator dynamics."""
 from __future__ import annotations
 
-import itertools
-from typing import Dict, List, Sequence, Tuple
+from typing import List, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import drawer
 import parameters as param
+
+__all__ = ["launch_replicator_widget"]
 
 try:  # pragma: no cover - optional dependency
     import ipywidgets as widgets
@@ -28,11 +29,6 @@ GAME_LABELS = {
 }
 
 
-def _is_three_population(payoff: Sequence[np.ndarray]) -> bool:
-    first = payoff[0]
-    return getattr(first, "ndim", 0) == 3
-
-
 def _sample_initial_conditions(payoff, count: int, rng: np.random.Generator) -> List[List[float]]:
     if isinstance(payoff, np.ndarray):
         n = payoff.shape[0]
@@ -47,70 +43,6 @@ def _sample_initial_conditions(payoff, count: int, rng: np.random.Generator) -> 
         return rng.random((count, 3)).tolist()
 
     return rng.random((count, 2)).tolist()
-
-
-def _normalize_labels(labels: Sequence[str], target: int) -> List[str]:
-    current = list(labels)
-    if len(current) >= target:
-        return current[:target]
-    needed = target - len(current)
-    current.extend([f"S{i+1}" for i in range(len(current), len(current) + needed)])
-    return current
-
-
-def _infer_label_count(payoff) -> int:
-    if isinstance(payoff, np.ndarray):
-        if payoff.ndim == 2:
-            return payoff.shape[0]
-        if payoff.ndim == 1:
-            return payoff.shape[0]
-        return 3
-    first = payoff[0]
-    if first.ndim == 2:
-        return first.shape[0]
-    if first.ndim == 3:
-        return 3
-    return 3
-
-
-def _uses_cube(payoff) -> bool:
-    return isinstance(payoff, tuple) and _is_three_population(payoff)
-
-
-def _uses_tetrahedron(payoff) -> bool:
-    return isinstance(payoff, np.ndarray) and payoff.ndim == 2 and payoff.shape[0] == 4
-
-
-def _setup_axes(payoff, strategy_labels):
-    cube = _uses_cube(payoff)
-    tetra = _uses_tetrahedron(payoff)
-    three_dim = cube or tetra
-    if three_dim:
-        fig = plt.figure(figsize=(6, 6))
-        ax = fig.add_subplot(111, projection="3d")
-        ax.set_box_aspect((1, 1, 1))
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.set_zticks([])
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
-        ax.set_zticklabels([])
-    else:
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax.axis("off")
-    needed = _infer_label_count(payoff)
-    labels = _normalize_labels(strategy_labels, needed)
-    drawer.setSimplex(labels, payoff, ax, fontSize=13, zOrder=10)
-    return fig, ax, three_dim
-
-
-def _maybe_speed(payoff, ax, show: bool):
-    if not show:
-        return
-    if isinstance(payoff, np.ndarray) and payoff.shape[0] == 3:
-        drawer.speed_plot([0, 1], [0, np.sqrt(3 / 4)], 60, payoff, ax, plt.cm.Greys, levels=8, zd=9)
-    elif isinstance(payoff, tuple) and payoff[0].shape == (2, 2):
-        drawer.speed_plot([0, 1], [0, 1], 60, payoff, ax, plt.cm.Greys, levels=8, zd=9)
 
 
 def _plot(
@@ -132,54 +64,22 @@ def _plot(
     rng = np.random.default_rng(seed)
     starts = _sample_initial_conditions(payoff, num_traj, rng)
     colors = plt.cm.tab10(np.linspace(0, 1, max(num_traj, 3)))
-
-    fig, ax, is_3d = _setup_axes(payoff, game.strategy_labels or ["x", "y", "z"])
-    _maybe_speed(payoff, ax, show_speed)
-
-    # Match the hand-tuned arrow look used in the example cell.
-    base_arrow_size = 0.04
-    base_arrow_width = 0.015
-
-    parr = arrow_positions
-    for idx, start in enumerate(starts):
-        drawer.trajectory(
-            start,
-            payoff,
-            param.step,
-            parr,
-            tmax,
-            fig,
-            ax,
-            colors[idx % len(colors)],
-            base_arrow_size * (4 if is_3d else 1),
-            base_arrow_width * (4 if is_3d else 1),
-            30,
-        )
-
-    if show_equilibria:
-        # For 2D plots use monochrome convention: unstable=white, saddle=gray, stable=black.
-        if is_3d:
-            drawer.equilibria(
-                payoff,
-                ax,
-                colSnk="seagreen",
-                colSdl="gold",
-                colSce="firebrick",
-                ptSize=60 if not is_3d else 40,
-                zd=40,
-            )
-        else:
-            drawer.equilibria(
-                payoff,
-                ax,
-                colSnk="black",
-                colSdl="gray",
-                colSce="white",
-                ptSize=60,
-                zd=40,
-            )
-
-    ax.set_title(f"{game_key} – {game.name} ({dynamic_label})")
+    _, ax = drawer.plot_game(
+        game,
+        starts=starts,
+        tmax=tmax,
+        trajectory_arrows=arrow_positions,
+        trajectory_color=colors,
+        show_speed=show_speed,
+        speed_cmap=plt.cm.Greys,
+        speed_levels=8,
+        show_equilibria=show_equilibria,
+        sink_color="black",
+        saddle_color="gray",
+        source_color="white",
+        equilibrium_size=60,
+    )
+    ax.set_title(f"{game_key} - {game.name} ({dynamic_label})")
     plt.show()
 
 
@@ -191,7 +91,7 @@ def launch_replicator_widget() -> None:
         ) from _IPYWIDGETS_IMPORT_ERROR
 
     game_dropdown = widgets.Dropdown(
-        options=[(label, key) for key, label in GAME_LABELS.items() if key in param.GAMES_BY_TEST],
+        options=[(label, key) for key, label in GAME_LABELS.items() if key in param.GAME_CATALOG],
         description="Game",
         value="2P3S",
     )
@@ -207,7 +107,7 @@ def launch_replicator_widget() -> None:
         min=5,
         max=100,
         step=5,
-        description="Tmax",
+        description="tmax",
         continuous_update=False,
     )
     traj_slider = widgets.IntSlider(

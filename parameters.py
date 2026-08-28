@@ -10,6 +10,19 @@ import numpy as np
 
 from game import Game, game_names
 
+__all__ = [
+    "GAME_CLASS_MENU",
+    "GAME_CATALOG",
+    "GAME_NAMES_2P3S",
+    "GAME_NAMES_2P2S",
+    "GAME_NAMES_2P4S",
+    "GAME_NAMES_3P2S",
+    "arrow_size",
+    "arrow_width",
+    "time_step",
+    "available_games",
+]
+
 
 def _coordination_tensor():
     tensor = np.zeros((2, 2, 2))
@@ -20,10 +33,10 @@ def _coordination_tensor():
                     tensor[a1, a2, a3] = 1
     return tensor
 
-# Simulation dictionaries
-dict_test = {1: "arrow", 2: "2P3S", 3: "2P2S", 4: "2P4S", 5: "3P2S"}
+# Example game catalogue, indexed by supported game-class identifier.
+GAME_CLASS_MENU = {1: "arrow", 2: "2P3S", 3: "2P2S", 4: "2P4S", 5: "3P2S"}
 
-GAMES_BY_TEST = {
+GAME_CATALOG = {
     "2P3S": {
         1: Game(
             "Good RPS",
@@ -106,17 +119,17 @@ GAMES_BY_TEST = {
     },
 }
 
-dict_2P3S = game_names(GAMES_BY_TEST["2P3S"].items())
-dict_2P2S = game_names(GAMES_BY_TEST["2P2S"].items())
-dict_2P4S = game_names(GAMES_BY_TEST["2P4S"].items())
-dict_3P2S = game_names(GAMES_BY_TEST["3P2S"].items())
+GAME_NAMES_2P3S = game_names(GAME_CATALOG["2P3S"].items())
+GAME_NAMES_2P2S = game_names(GAME_CATALOG["2P2S"].items())
+GAME_NAMES_2P4S = game_names(GAME_CATALOG["2P4S"].items())
+GAME_NAMES_3P2S = game_names(GAME_CATALOG["3P2S"].items())
 
 # Drawer parameters
-arrowSize = 1 / 25.0
-arrowWidth = (1 / 2) * arrowSize
-step = 0.01
+arrow_size = 1 / 25.0
+arrow_width = (1 / 2) * arrow_size
+time_step = 0.01
 
 
-def available_games(test_key):
-    """Return the mapping of example IDs to Game instances for the requested test."""
-    return GAMES_BY_TEST.get(test_key, {})
+def available_games(game_class):
+    """Return the mapping of example IDs to Game instances for the requested game class."""
+    return GAME_CATALOG.get(game_class, {})

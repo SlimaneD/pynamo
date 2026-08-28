@@ -54,12 +54,18 @@ Override plot parameters directly:
 fig, ax = drawer.plot_game(
     game,
     random_state=1,
-    Tmax=60,
+    tmax=60,
     trajectory_arrows=[],
+    show_vector_field=True,
+    vector_grid=20,
     speed_levels=20,
     equilibrium_size=100,
 )
 ```
+
+Vector fields are available for both 2D and 3D game classes. Sparse 3D vector
+fields can be useful for exploration, but they are often hard to read in static
+figures; trajectories are usually clearer for publication graphics.
 
 ## Equilibrium Analysis Table
 
@@ -69,7 +75,7 @@ For notebooks, use `analysis.equilibrium_table` to inspect isolated equilibria w
 import analysis
 import parameters as param
 
-game = param.available_games("2P3S")[0]
+game = param.available_games("2P3S")[1]
 analysis.equilibrium_table(game)
 ```
 

@@ -17,6 +17,14 @@ from sympy.abc import x, y, z
 import dynamics
 from game import infer_game_class
 
+__all__ = [
+    "InconclusiveStabilityWarning",
+    "EquilibriumRecord",
+    "EquilibriumAnalysis",
+    "analyze_equilibria",
+    "equilibrium_table",
+]
+
 
 class InconclusiveStabilityWarning(RuntimeWarning):
     """Warning raised when stability cannot be classified by implemented tests."""
@@ -34,8 +42,8 @@ class EquilibriumRecord:
     stability: str
     eigenvalues: Optional[np.ndarray]
     eigenvectors: Optional[np.ndarray]
-    feasible_eigenvalues: Optional[np.ndarray]
-    feasible_eigenvectors: Optional[np.ndarray]
+    admissible_eigenvalues: Optional[np.ndarray]
+    admissible_eigenvectors: Optional[np.ndarray]
     nash: Optional[bool]
     strict_nash: Optional[bool]
     ess: Optional[bool] = None
@@ -62,36 +70,36 @@ class EquilibriumAnalysis:
         return pd.DataFrame(self.to_rows(ndigits=ndigits))
 
 
-def analyze_equilibria(game_or_payoffs) -> EquilibriumAnalysis:
+def analyze_equilibria(game) -> EquilibriumAnalysis:
     """Compute equilibrium positions, stability, eigenvalues, and eigenvectors."""
-    payoffs = _payoff_data(game_or_payoffs)
-    game_class = infer_game_class(game_or_payoffs)
-    raw_equilibria = dynamics.compute_equilibria(payoffs)
+    payoff_data = _payoff_data(game)
+    game_class = infer_game_class(game)
+    raw_equilibria = dynamics.compute_equilibria(payoff_data)
     records = []
 
     for eq in raw_equilibria:
         reduced = np.asarray(eq, dtype=float)
-        if not _is_feasible_state(reduced, game_class):
+        if not _is_state_in_domain(reduced, game_class):
             continue
 
-        nash, strict_nash = _nash_status(reduced, payoffs, game_class)
-        ess = _is_ess_symmetric(reduced, payoffs, game_class)
-        eig_data = _eigen_data(reduced, payoffs, game_class)
+        nash, strict_nash = _nash_status(reduced, payoff_data, game_class)
+        ess = _is_ess_symmetric(reduced, payoff_data, game_class)
+        eig_data = _eigen_data(reduced, payoff_data, game_class)
         if eig_data is None:
-            stability = "undet"
-            eigvals = eigvecs = feasible_vals = feasible_vecs = None
+            stability = "undetermined"
+            eigvals = eigvecs = admissible_vals = admissible_vecs = None
             warning = "No eigenvalue analysis is implemented for this game class."
         else:
             eigvals, eigvecs = eig_data
-            feasible_vals, feasible_vecs, skipped_complex = _feasible_eigenpairs(
+            admissible_vals, admissible_vecs, skipped_complex = _admissible_eigenpairs(
                 reduced, eig_data, game_class
             )
-            stability = _classify_from_feasible_eigenvalues(
-                feasible_vals, skipped_complex
+            stability = _classify_from_admissible_eigenvalues(
+                admissible_vals, skipped_complex
             )
             warning = None
 
-            if stability in ("centre", "undet"):
+            if stability in ("center", "undetermined"):
                 if ess:
                     stability = "sink"
                 else:
@@ -107,8 +115,8 @@ def analyze_equilibria(game_or_payoffs) -> EquilibriumAnalysis:
                 stability=stability,
                 eigenvalues=eigvals,
                 eigenvectors=eigvecs,
-                feasible_eigenvalues=feasible_vals,
-                feasible_eigenvectors=feasible_vecs,
+                admissible_eigenvalues=admissible_vals,
+                admissible_eigenvectors=admissible_vecs,
                 nash=nash,
                 strict_nash=strict_nash,
                 ess=ess,
@@ -124,30 +132,30 @@ def analyze_equilibria(game_or_payoffs) -> EquilibriumAnalysis:
     )
 
 
-def equilibrium_table(game_or_payoffs, ndigits: int = 6):
+def equilibrium_table(game, ndigits: int = 6):
     """Convenience wrapper returning a pandas table of equilibrium analysis."""
-    return analyze_equilibria(game_or_payoffs).to_dataframe(ndigits=ndigits)
+    return analyze_equilibria(game).to_dataframe(ndigits=ndigits)
 
 
-def _payoff_data(game_or_payoffs):
-    return getattr(game_or_payoffs, "payoff_data", game_or_payoffs)
+def _payoff_data(game):
+    return getattr(game, "payoff_data", game)
 
 
-def _eigen_data(reduced, payoffs, game_class):
+def _eigen_data(reduced, payoff_data, game_class):
     if game_class == "2P3S":
-        field = Matrix(dynamics.repDyn3([x, y], 0, payoffs))
+        field = Matrix(dynamics.replicator_2p3s([x, y], 0, payoff_data))
         jacobian = field.jacobian(Matrix([x, y]))
         matrix = np.array(jacobian.subs([(x, reduced[0]), (y, reduced[1])]), dtype=float)
         return np.linalg.eig(matrix)
 
     if game_class == "2P2S":
-        field = Matrix(dynamics.repDyn22_vector([x, y], 0, payoffs))
+        field = Matrix(dynamics.replicator_2p2s([x, y], 0, payoff_data))
         jacobian = field.jacobian(Matrix([x, y]))
         matrix = np.array(jacobian.subs([(x, reduced[0]), (y, reduced[1])]), dtype=float)
         return np.linalg.eig(matrix)
 
     if game_class == "2P4S":
-        field = Matrix(dynamics.repDyn4([x, y, z], 0, payoffs))
+        field = Matrix(dynamics.replicator_2p4s([x, y, z], 0, payoff_data))
         jacobian = field.jacobian(Matrix([x, y, z]))
         matrix = np.array(
             jacobian.subs([(x, reduced[0]), (y, reduced[1]), (z, reduced[2])]),
@@ -157,21 +165,21 @@ def _eigen_data(reduced, payoffs, game_class):
 
     if game_class == "3P2S":
         matrix = _numeric_jacobian(
-            lambda state: dynamics.repDyn3Pop2(state, 0, payoffs), reduced
+            lambda state: dynamics.replicator_3pop2s(state, 0, payoff_data), reduced
         )
         return np.linalg.eig(matrix)
 
     return None
 
 
-def _numeric_jacobian(vector_field, point, eps: float = 1e-6):
+def _numeric_jacobian(field_function, point, eps: float = 1e-6):
     point = np.asarray(point, dtype=float)
-    f0 = np.asarray(vector_field(point), dtype=float)
+    f0 = np.asarray(field_function(point), dtype=float)
     jacobian = np.zeros((point.size, point.size), dtype=float)
     for axis in range(point.size):
         perturbed = point.copy()
         perturbed[axis] = np.clip(perturbed[axis] + eps, 0.0, 1.0)
-        f1 = np.asarray(vector_field(perturbed), dtype=float)
+        f1 = np.asarray(field_function(perturbed), dtype=float)
         jacobian[:, axis] = (f1 - f0) / eps
     return jacobian
 
@@ -185,21 +193,21 @@ def _full_position(reduced, game_class):
     return reduced.copy()
 
 
-def _nash_status(reduced, payoffs, game_class, tol: float = 1e-8):
-    """Return whether a feasible state is Nash and strict Nash."""
+def _nash_status(reduced, payoff_data, game_class, tol: float = 1e-8):
+    """Return whether a state in the game domain is Nash and strict Nash."""
     if game_class in ("2P3S", "2P4S"):
-        return _symmetric_nash_status(_full_position(reduced, game_class), payoffs, tol)
+        return _symmetric_nash_status(_full_position(reduced, game_class), payoff_data, tol)
     if game_class == "2P2S":
-        return _asymmetric_2p2s_nash_status(reduced, payoffs, tol)
+        return _asymmetric_2p2s_nash_status(reduced, payoff_data, tol)
     if game_class == "3P2S":
-        return _three_pop_two_action_nash_status(reduced, payoffs, tol)
+        return _three_pop_two_action_nash_status(reduced, payoff_data, tol)
     return None, None
 
 
 def _symmetric_nash_status(strategy, payoff_matrix, tol: float):
     p = np.asarray(strategy, dtype=float)
-    payoffs = payoff_matrix @ p
-    return _mixed_strategy_best_response_status([p], [payoffs], tol)
+    payoff_data = payoff_matrix @ p
+    return _mixed_strategy_best_response_status([p], [payoff_data], tol)
 
 
 def _asymmetric_2p2s_nash_status(reduced, payoff_matrices, tol: float):
@@ -262,27 +270,27 @@ def _mixed_strategy_best_response_status(strategies, payoff_vectors, tol: float)
     is_nash = True
     is_strict = True
 
-    for strategy, payoffs in zip(strategies, payoff_vectors):
+    for strategy, payoff_data in zip(strategies, payoff_vectors):
         strategy = np.asarray(strategy, dtype=float)
-        payoffs = np.asarray(payoffs, dtype=float)
+        payoff_data = np.asarray(payoff_data, dtype=float)
 
         support = strategy > tol
-        max_payoff = np.max(payoffs)
-        if np.any(np.abs(payoffs[support] - max_payoff) > tol):
+        max_payoff = np.max(payoff_data)
+        if np.any(np.abs(payoff_data[support] - max_payoff) > tol):
             is_nash = False
 
         if np.count_nonzero(support) != 1:
             is_strict = False
         else:
             chosen = int(np.flatnonzero(support)[0])
-            alternatives = np.delete(payoffs, chosen)
-            if alternatives.size and not np.all(payoffs[chosen] > alternatives + tol):
+            alternatives = np.delete(payoff_data, chosen)
+            if alternatives.size and not np.all(payoff_data[chosen] > alternatives + tol):
                 is_strict = False
 
     return bool(is_nash), bool(is_nash and is_strict)
 
 
-def _is_feasible_state(reduced, game_class, tol: float = 1e-9) -> bool:
+def _is_state_in_domain(reduced, game_class, tol: float = 1e-9) -> bool:
     reduced = np.asarray(reduced, dtype=float)
     if game_class in ("2P3S", "2P4S"):
         return np.all(reduced >= -tol) and reduced.sum() <= 1.0 + tol
@@ -300,7 +308,7 @@ def _is_interior_point(point, game_class, tol: float = 1e-9) -> bool:
     return False
 
 
-def _is_feasible_direction(point, direction, game_class, tol: float = 1e-9) -> bool:
+def _is_admissible_direction(point, direction, game_class, tol: float = 1e-9) -> bool:
     point = np.asarray(point, dtype=float)
     direction = np.asarray(direction, dtype=float)
 
@@ -331,7 +339,7 @@ def _is_feasible_direction(point, direction, game_class, tol: float = 1e-9) -> b
     return False
 
 
-def _feasible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
+def _admissible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
     eigvals, eigvecs = eig_data
     if _is_interior_point(point, game_class, tol):
         return np.asarray(eigvals, dtype=complex), np.asarray(eigvecs), False
@@ -347,8 +355,8 @@ def _feasible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
 
         direction = np.real(eigvec)
         if (
-            _is_feasible_direction(point, direction, game_class, tol)
-            or _is_feasible_direction(point, -direction, game_class, tol)
+            _is_admissible_direction(point, direction, game_class, tol)
+            or _is_admissible_direction(point, -direction, game_class, tol)
         ):
             values.append(eigval)
             vectors.append(eigvec)
@@ -360,11 +368,11 @@ def _feasible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
     return np.asarray(values, dtype=complex), vectors, skipped_complex_boundary
 
 
-def _classify_from_feasible_eigenvalues(feasible, skipped_complex_boundary, tol: float = 1e-9):
-    if feasible is None or feasible.size == 0:
-        return "undet"
+def _classify_from_admissible_eigenvalues(admissible, skipped_complex_boundary, tol: float = 1e-9):
+    if admissible is None or admissible.size == 0:
+        return "undetermined"
 
-    real_parts = np.real(feasible)
+    real_parts = np.real(admissible)
     if np.all(real_parts < -tol):
         return "sink"
     if np.all(real_parts > tol):
@@ -373,10 +381,10 @@ def _classify_from_feasible_eigenvalues(feasible, skipped_complex_boundary, tol:
         return "saddle"
     if np.all(np.abs(real_parts) <= tol):
         if skipped_complex_boundary:
-            return "undet"
-        if np.any(np.abs(np.imag(feasible)) > tol):
-            return "centre"
-        return "undet"
+            return "undetermined"
+        if np.any(np.abs(np.imag(admissible)) > tol):
+            return "center"
+        return "undetermined"
 
     if np.any(real_parts > tol):
         # Positive real parts prove instability, but zero real parts prevent a
@@ -385,10 +393,10 @@ def _classify_from_feasible_eigenvalues(feasible, skipped_complex_boundary, tol:
 
     # Negative real parts together with zero real parts do not prove asymptotic
     # stability. A later ESS check may still classify symmetric-game cases.
-    return "undet"
+    return "undetermined"
 
 
-def _is_ess_symmetric(reduced, payoffs, game_class, tol: float = 1e-8) -> Optional[bool]:
+def _is_ess_symmetric(reduced, payoff_data, game_class, tol: float = 1e-8) -> Optional[bool]:
     if game_class not in ("2P3S", "2P4S"):
         return None
 
@@ -398,19 +406,19 @@ def _is_ess_symmetric(reduced, payoffs, game_class, tol: float = 1e-8) -> Option
         return False
     p = p / total
 
-    pure_payoffs = payoffs @ p
-    payoff_at_p = float(p @ pure_payoffs)
-    if np.any(pure_payoffs > payoff_at_p + tol):
+    pure_payoff_data = payoff_data @ p
+    payoff_at_p = float(p @ pure_payoff_data)
+    if np.any(pure_payoff_data > payoff_at_p + tol):
         return False
 
     support = np.flatnonzero(p > tol)
-    best_responses = np.flatnonzero(np.abs(pure_payoffs - payoff_at_p) <= tol)
+    best_responses = np.flatnonzero(np.abs(pure_payoff_data - payoff_at_p) <= tol)
     if best_responses.size != support.size or set(best_responses) != set(support):
         return False
     if support.size == 1:
         return True
 
-    payoff_submatrix = payoffs[np.ix_(support, support)]
+    payoff_submatrix = payoff_data[np.ix_(support, support)]
     symmetric_part = 0.5 * (payoff_submatrix + payoff_submatrix.T)
     basis = _tangent_basis(support.size)
     restricted = basis.T @ symmetric_part @ basis
@@ -431,7 +439,7 @@ def _unresolved_warning(reduced, game_class):
     full = _full_position(reduced, game_class)
     return (
         "Stability classification is inconclusive for equilibrium "
-        f"{np.round(full, 10).tolist()}: feasible linearization has "
+        f"{np.round(full, 10).tolist()}: admissible linearization has "
         "eigenvalues with zero real part or unsupported eigendirections, "
         "and the implemented fallback did not establish asymptotic stability."
     )
@@ -440,12 +448,12 @@ def _unresolved_warning(reduced, game_class):
 def _record_to_row(record: EquilibriumRecord, ndigits: int) -> dict:
     return {
         "Position": _format_array(record.full_position, ndigits),
-        "Stability status": record.stability,
+        "Stability Status": record.stability,
         "Nash": record.nash,
         "ESS": record.ess,
         "Strict Nash": record.strict_nash,
-        "Eigenvalues": _format_array(record.feasible_eigenvalues, ndigits),
-        "Eigenvectors": _format_matrix(record.feasible_eigenvectors, ndigits),
+        "Eigenvalues": _format_array(record.admissible_eigenvalues, ndigits),
+        "Eigenvectors": _format_matrix(record.admissible_eigenvectors, ndigits),
         "Warning": record.warning,
     }
 

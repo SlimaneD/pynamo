@@ -11,6 +11,20 @@ import warnings
 
 import numpy as np
 
+__all__ = [
+    "DegenerateEquilibriumWarning",
+    "EquilibriumResult",
+    "replicator_2p2s",
+    "reverse_replicator_2p2s",
+    "replicator_2p3s",
+    "reverse_replicator_2p3s",
+    "replicator_2p4s",
+    "reverse_replicator_2p4s",
+    "replicator_3pop2s",
+    "reverse_replicator_3pop2s",
+    "compute_equilibria",
+]
+
 
 class DegenerateEquilibriumWarning(RuntimeWarning):
     """Warning raised when equilibrium sets are non-isolated."""
@@ -28,72 +42,79 @@ class EquilibriumResult(list):
         self.message = message
 
 # Replicator dynamics for a symmetric 2P3S game
-def w3(x1, x2, y_1, y_2, payMtx):
-    ''' Average payoff of a (x1, x2) strategy against a (y1, y2) strategy in symmetric 2P3S games'''
-    return x1*(y_1*payMtx[0][0] + y_2*payMtx[0][1] + (1-y_1-y_2)*payMtx[0][2]) + x2*(y_1*payMtx[1][0] + y_2*payMtx[1][1] + (1-y_1-y_2)*payMtx[1][2]) + (1-x1-x2)*(y_1*payMtx[2][0] + y_2*payMtx[2][1] + (1-y_1-y_2)*payMtx[2][2])
+def _average_payoff_2p3s(x1, x2, y1, y2, payoff_data):
+    """Average payoff of strategy (x1, x2) against strategy (y1, y2)."""
+    return (
+        x1 * (y1 * payoff_data[0][0] + y2 * payoff_data[0][1] + (1 - y1 - y2) * payoff_data[0][2])
+        + x2 * (y1 * payoff_data[1][0] + y2 * payoff_data[1][1] + (1 - y1 - y2) * payoff_data[1][2])
+        + (1 - x1 - x2)
+        * (y1 * payoff_data[2][0] + y2 * payoff_data[2][1] + (1 - y1 - y2) * payoff_data[2][2])
+    )
 
-def repDyn3(X, t, payMtx):
-    '''Computes the replicator dynamics for a symmetric 2-player 3-strategy game (2P3S)'''
-    x1, x2 = X
-    Pbar = w3(x1, x2, x1, x2, payMtx)
-    return np.array([x1*(w3(1, 0, x1, x2, payMtx) - Pbar), x2*(w3(0, 1, x1, x2, payMtx) - Pbar)])
 
-def repDyn3Speed(x1, x2, payMtx):
-    '''Computes the replicator dynamics for a symmetric 2-player 3-strategy game (2P3S) | adapted for speed grids'''
-    Pbar = w3(x1, x2, x1, x2, payMtx)
-    return np.array([x1*(w3(1, 0, x1, x2, payMtx) - Pbar), x2*(w3(0, 1, x1, x2, payMtx) - Pbar)])
+def replicator_2p3s(state, t, payoff_data):
+    """Replicator dynamics for a symmetric 2-player 3-strategy game."""
+    x1, x2 = state
+    average_payoff = _average_payoff_2p3s(x1, x2, x1, x2, payoff_data)
+    return np.array(
+        [
+            x1 * (_average_payoff_2p3s(1, 0, x1, x2, payoff_data) - average_payoff),
+            x2 * (_average_payoff_2p3s(0, 1, x1, x2, payoff_data) - average_payoff),
+        ]
+    )
 
-def repDyn3Rev(X, t, payMtx):
-    '''Computes the opposite replicator dynamics for a symmetric 2-player 3-strategy game (2P3S)'''
-    x1, x2 = X
-    Pbar = w3(x1, x2, x1, x2, payMtx)
-    return np.array([-x1*(w3(1, 0, x1, x2, payMtx) - Pbar), -x2*(w3(0, 1, x1, x2, payMtx) - Pbar)])
+
+def reverse_replicator_2p3s(state, t, payoff_data):
+    """Reverse-time replicator dynamics for a symmetric 2P3S game."""
+    return -replicator_2p3s(state, t, payoff_data)
+
 
 # Replicator dynamics for an asymmetric 2P2S game
-def repDyn22(X, t, payMtx):
-    '''Computes the replicator dynamics for an asymmetric 2P2S game'''
-    x, y = X
-    return x*(1-x)*( (y*payMtx[0][0] + (1-y)*payMtx[0][1]) - (y*payMtx[1][0] + (1-y)*payMtx[1][1]))
+def _replicator_2p2s_population(state, t, payoff_data):
+    """One-population component of asymmetric 2P2S replicator dynamics."""
+    x, y = state
+    payoff_action_1 = y * payoff_data[0][0] + (1 - y) * payoff_data[0][1]
+    payoff_action_2 = y * payoff_data[1][0] + (1 - y) * payoff_data[1][1]
+    return x * (1 - x) * (payoff_action_1 - payoff_action_2)
 
-def repDyn22Rev(X, t, payMtx):
-    '''Computes the opposite replicator dynamics for an asymmetric 2P2S game'''
-    x, y = X
-    return -x*(1-x)*( (y*payMtx[0][0] + (1-y)*payMtx[0][1]) - (y*payMtx[1][0] + (1-y)*payMtx[1][1]))
 
-def repDyn22_vector(X, t, payMtx):
-    """Vector field for asymmetric 2P2S replicator dynamics (both populations)."""
-    x, y = X[0], X[1]
-    return [repDyn22([x, y], t, payMtx[0]), repDyn22([y, x], t, payMtx[1])]
+def replicator_2p2s(state, t, payoff_data):
+    """Vector field for asymmetric 2-player 2-strategy replicator dynamics."""
+    x, y = state
+    return [
+        _replicator_2p2s_population([x, y], t, payoff_data[0]),
+        _replicator_2p2s_population([y, x], t, payoff_data[1]),
+    ]
 
-def repDyn22_vector_rev(X, t, payMtx):
-    """Opposite vector field for asymmetric 2P2S replicator dynamics (both populations)."""
-    x, y = X[0], X[1]
-    return [repDyn22Rev([x, y], t, payMtx[0]), repDyn22Rev([y, x], t, payMtx[1])]
+
+def reverse_replicator_2p2s(state, t, payoff_data):
+    """Reverse-time vector field for asymmetric 2P2S replicator dynamics."""
+    return -np.asarray(replicator_2p2s(state, t, payoff_data))
 
 # Replicator dynamics for 2P4S game
 
-def w4(x1, x2, x3, y1, y2, y3, payMtx):
-    ''' Average payoff of a (x1, x2, x3) strategy against a (y1, y2, y3) strategy in symmetric 2P4S games'''
+def _average_payoff_2p4s(x1, x2, x3, y1, y2, y3, payoff_data):
+    """Average payoff of strategy (x1, x2, x3) against strategy (y1, y2, y3)."""
 #    X = np.array([x1, x2, x3, 1 - x1 - x2 - x3])
 #    Y = np.array([ [y1], [y2], [y3], [1 - y1 - y2 - y3] ])
-#    PY = np.dot(payMtx, Y)
+#    PY = np.dot(payoff_data, Y)
 #    sumT = np.dot(X, PY)[0]
 #    print("sumT", sumT)
-#    test = x1*(y1*payMtx[0, 0] + y2*payMtx[0, 1] + y3*payMtx[0, 2] + (1 - y1 - y2 - y3)*payMtx[0, 3]) + x2*(y1*payMtx[1, 0] + y2*payMtx[1, 1] + y3*payMtx[1, 2] + (1 - y1 - y2 - y3)*payMtx[1, 3]) + x3*(y1*payMtx[2, 0] + y2*payMtx[2, 1] + y3*payMtx[2, 2] + (1 - y1 - y2 - y3)*payMtx[2, 3]) + (1 - x1 - x2 - x3)*(y1*payMtx[3, 0] + y2*payMtx[3, 1] + y3*payMtx[3, 2] + (1 - y1 - y2 - y3)*payMtx[3, 3])
+#    test = x1*(y1*payoff_data[0, 0] + y2*payoff_data[0, 1] + y3*payoff_data[0, 2] + (1 - y1 - y2 - y3)*payoff_data[0, 3]) + x2*(y1*payoff_data[1, 0] + y2*payoff_data[1, 1] + y3*payoff_data[1, 2] + (1 - y1 - y2 - y3)*payoff_data[1, 3]) + x3*(y1*payoff_data[2, 0] + y2*payoff_data[2, 1] + y3*payoff_data[2, 2] + (1 - y1 - y2 - y3)*payoff_data[2, 3]) + (1 - x1 - x2 - x3)*(y1*payoff_data[3, 0] + y2*payoff_data[3, 1] + y3*payoff_data[3, 2] + (1 - y1 - y2 - y3)*payoff_data[3, 3])
 #    print("test", test)
-    return x1*(y1*payMtx[0, 0] + y2*payMtx[0, 1] + y3*payMtx[0, 2] + (1 - y1 - y2 - y3)*payMtx[0, 3]) + x2*(y1*payMtx[1, 0] + y2*payMtx[1, 1] + y3*payMtx[1, 2] + (1 - y1 - y2 - y3)*payMtx[1, 3]) + x3*(y1*payMtx[2, 0] + y2*payMtx[2, 1] + y3*payMtx[2, 2] + (1 - y1 - y2 - y3)*payMtx[2, 3]) + (1 - x1 - x2 - x3)*(y1*payMtx[3, 0] + y2*payMtx[3, 1] + y3*payMtx[3, 2] + (1 - y1 - y2 - y3)*payMtx[3, 3])
+    return x1*(y1*payoff_data[0, 0] + y2*payoff_data[0, 1] + y3*payoff_data[0, 2] + (1 - y1 - y2 - y3)*payoff_data[0, 3]) + x2*(y1*payoff_data[1, 0] + y2*payoff_data[1, 1] + y3*payoff_data[1, 2] + (1 - y1 - y2 - y3)*payoff_data[1, 3]) + x3*(y1*payoff_data[2, 0] + y2*payoff_data[2, 1] + y3*payoff_data[2, 2] + (1 - y1 - y2 - y3)*payoff_data[2, 3]) + (1 - x1 - x2 - x3)*(y1*payoff_data[3, 0] + y2*payoff_data[3, 1] + y3*payoff_data[3, 2] + (1 - y1 - y2 - y3)*payoff_data[3, 3])
 
-def repDyn4(X, t, payMtx):
-    '''Computes the replicator dynamics for a symmetric 2P4S game'''
-    x1, x2, x3 = X
-    Pbar = w4(x1, x2, x3, x1, x2, x3, payMtx)
-    return np.array([x1*(w4(1, 0, 0, x1, x2, x3, payMtx) - Pbar), x2*(w4(0, 1, 0, x1, x2, x3, payMtx) - Pbar), x3*(w4(0, 0, 1, x1, x2, x3, payMtx) - Pbar)])
 
-def repDyn4Rev(X, t, payMtx):
-    '''Computes the opposite replicator dynamics for a symmetric 2P4S game'''
-    x1, x2, x3 = X
-    Pbar = w4(x1, x2, x3, x1, x2, x3, payMtx)
-    return np.array([-x1*(w4(1, 0, 0, x1, x2, x3, payMtx) - Pbar), -x2*(w4(0, 1, 0, x1, x2, x3, payMtx) - Pbar), -x3*(w4(0, 0, 1, x1, x2, x3, payMtx) - Pbar)])
+def replicator_2p4s(state, t, payoff_data):
+    """Replicator dynamics for a symmetric 2-player 4-strategy game."""
+    x1, x2, x3 = state
+    average_payoff = _average_payoff_2p4s(x1, x2, x3, x1, x2, x3, payoff_data)
+    return np.array([x1*(_average_payoff_2p4s(1, 0, 0, x1, x2, x3, payoff_data) - average_payoff), x2*(_average_payoff_2p4s(0, 1, 0, x1, x2, x3, payoff_data) - average_payoff), x3*(_average_payoff_2p4s(0, 0, 1, x1, x2, x3, payoff_data) - average_payoff)])
+
+
+def reverse_replicator_2p4s(state, t, payoff_data):
+    """Reverse-time replicator dynamics for a symmetric 2P4S game."""
+    return -replicator_2p4s(state, t, payoff_data)
 
 
 # Replicator dynamics for a 3-population 2-action game
@@ -116,30 +137,30 @@ def _expected_payoff(pay_tensor, probs, player_index, action):
     return total
 
 
-def repDyn3Pop2(X, t, payTensors):
+def replicator_3pop2s(state, t, payoff_tensors):
     """Replicator dynamics for three populations with two actions each."""
-    x, y, z = X
+    x, y, z = state
     probs = [x, y, z]
-    tensors = payTensors
+    tensors = payoff_tensors
 
-    payoffs = []
+    payoff_data = []
     for idx, tensor in enumerate(tensors):
         u0 = _expected_payoff(tensor, probs, idx, 0)
         u1 = _expected_payoff(tensor, probs, idx, 1)
-        payoffs.append((u0, u1))
+        payoff_data.append((u0, u1))
 
-    dx = x * (payoffs[0][1] - (x * payoffs[0][1] + (1 - x) * payoffs[0][0]))
-    dy = y * (payoffs[1][1] - (y * payoffs[1][1] + (1 - y) * payoffs[1][0]))
-    dz = z * (payoffs[2][1] - (z * payoffs[2][1] + (1 - z) * payoffs[2][0]))
+    dx = x * (payoff_data[0][1] - (x * payoff_data[0][1] + (1 - x) * payoff_data[0][0]))
+    dy = y * (payoff_data[1][1] - (y * payoff_data[1][1] + (1 - y) * payoff_data[1][0]))
+    dz = z * (payoff_data[2][1] - (z * payoff_data[2][1] + (1 - z) * payoff_data[2][0]))
     return np.array([dx, dy, dz])
 
 
-def repDyn3Pop2Rev(X, t, payTensors):
+def reverse_replicator_3pop2s(state, t, payoff_tensors):
     """Opposite replicator dynamics for the three-population 2-action game."""
-    return -repDyn3Pop2(X, t, payTensors)
+    return -replicator_3pop2s(state, t, payoff_tensors)
 
 
-def compute_equilibria(payoffs):
+def compute_equilibria(payoff_data):
     """Return rest points (equilibria) of the replicator dynamics for the given payoff tensors."""
     from sympy import Symbol
     from sympy.solvers import solve
@@ -187,8 +208,8 @@ def compute_equilibria(payoffs):
             if not _contains_point(point, equilibria):
                 equilibria.append(list(point))
 
-    if payoffs[0].shape == (3,):
-        dx, dy = repDyn3([x_sym, y_sym], time_0, payoffs)
+    if payoff_data[0].shape == (3,):
+        dx, dy = replicator_2p3s([x_sym, y_sym], time_0, payoff_data)
         mass_constraint = dx + dy
         solutions = solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
         equilibria, degenerate = _extract_isolated_solutions(solutions, (x_sym, y_sym))
@@ -196,19 +217,19 @@ def compute_equilibria(payoffs):
             _mark_degenerate()
         _add_missing_points([(1.0, 0.0), (0.0, 1.0), (0.0, 0.0)])
 
-    elif payoffs[0].shape == (2, 2):
-        pay_p1, pay_p2 = payoffs
-        dx = repDyn22([x_sym, y_sym], time_0, pay_p1)
-        dy = repDyn22([y_sym, x_sym], time_0, pay_p2)
+    elif payoff_data[0].shape == (2, 2):
+        pay_p1, pay_p2 = payoff_data
+        dx = _replicator_2p2s_population([x_sym, y_sym], time_0, pay_p1)
+        dy = _replicator_2p2s_population([y_sym, x_sym], time_0, pay_p2)
         solutions = solve([dx, dy], x_sym, y_sym, dict=True)
         equilibria, degenerate = _extract_isolated_solutions(solutions, (x_sym, y_sym))
         if degenerate:
             _mark_degenerate()
         _add_missing_points(product((0.0, 1.0), repeat=2))
 
-    elif payoffs[0].shape == (2, 2, 2):
+    elif payoff_data[0].shape == (2, 2, 2):
         z_sym = Symbol('z')
-        dx, dy, dz = repDyn3Pop2([x_sym, y_sym, z_sym], time_0, payoffs)
+        dx, dy, dz = replicator_3pop2s([x_sym, y_sym, z_sym], time_0, payoff_data)
         solutions = solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
         equilibria, degenerate = _extract_isolated_solutions(
             solutions, (x_sym, y_sym, z_sym)
@@ -220,9 +241,9 @@ def compute_equilibria(payoffs):
             if not _contains_point(vertex, equilibria):
                 equilibria.append(list(vertex))
 
-    elif payoffs[0].shape == (4,):
+    elif payoff_data[0].shape == (4,):
         z_sym = Symbol('z')
-        dx, dy, dz = repDyn4([x_sym, y_sym, z_sym], time_0, payoffs)
+        dx, dy, dz = replicator_2p4s([x_sym, y_sym, z_sym], time_0, payoff_data)
         mass_constraint = dx + dy + dz
         solutions = solve([dx, dy, dz, mass_constraint], x_sym, y_sym, z_sym, dict=True)
         equilibria, degenerate = _extract_isolated_solutions(

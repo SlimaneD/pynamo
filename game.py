@@ -6,16 +6,21 @@ from typing import Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
-# Explain what the following type aliases represent in the context of the Game class.
-# PayoffMatrix: A 2D numpy array representing the payoff matrix for a player in a game. In a symmetric game, there is only one payoff matrix that applies to both players. In an asymmetric game, there are two payoff matrices, one for each player.
-# PayoffPair: A tuple containing two PayoffMatrix objects, representing the payoff matrices for both players in an asymmetric game.
-# RawPayoff: A type that can be either a single PayoffMatrix, a sequence of sequences of floats (which can be converted to a PayoffMatrix), or a sequence of PayoffMatrix objects (which can be converted to a PayoffPair).
 PayoffMatrix = np.ndarray
-PayoffPair = Tuple[PayoffMatrix, PayoffMatrix]
-RawPayoff = Union[
+PayoffCollection = Tuple[PayoffMatrix, ...]
+RawPayoffData = Union[
     PayoffMatrix,
     Sequence[Sequence[float]],
     Sequence[PayoffMatrix],
+]
+
+__all__ = [
+    "Game",
+    "PayoffMatrix",
+    "PayoffCollection",
+    "RawPayoffData",
+    "game_names",
+    "infer_game_class",
 ]
 
 
@@ -25,7 +30,7 @@ class Game:
     def __init__(
         self,
         name: str,
-        payoff_matrices: RawPayoff,
+        payoff_matrices: RawPayoffData,
         *,
         strategy_labels: Optional[Sequence[str]] = None,
         description: str = "",
@@ -34,7 +39,7 @@ class Game:
         self.name = name
         self.description = description
         self.strategy_labels: List[str] = list(strategy_labels or [])
-        self._payoff = self._normalise_payoff(payoff_matrices)
+        self._payoff = self._normalize_payoff(payoff_matrices)
 
         inferred_symmetry = not isinstance(self._payoff, tuple)
         if symmetric is None:
@@ -51,7 +56,7 @@ class Game:
         self._ensure_label_defaults()
 
     @property
-    def payoff_data(self) -> Union[PayoffMatrix, PayoffPair]:
+    def payoff_data(self) -> Union[PayoffMatrix, PayoffCollection]:
         """Return the underlying payoff representation."""
         return self._payoff
 
@@ -109,9 +114,9 @@ class Game:
             payoffs[idx] = result
         return payoffs
 
-    def _normalise_payoff(
-        self, payoff_matrices: RawPayoff
-    ) -> Union[PayoffMatrix, PayoffPair]:
+    def _normalize_payoff(
+        self, payoff_matrices: RawPayoffData
+    ) -> Union[PayoffMatrix, PayoffCollection]:
         if isinstance(payoff_matrices, tuple):
             matrices = tuple(self._to_numpy(matrix) for matrix in payoff_matrices)
             return matrices  # type: ignore[return-value]
@@ -175,19 +180,19 @@ def game_names(games: Iterable[Tuple[int, Game]]) -> dict:
     return {idx: game.name for idx, game in games}
 
 
-def infer_game_class(game_or_payoffs) -> str:
+def infer_game_class(game) -> str:
     """Infer the supported pyNamo game class from a Game or payoff data."""
-    payoffs = getattr(game_or_payoffs, "payoff_data", game_or_payoffs)
+    payoff_data = getattr(game, "payoff_data", game)
 
-    if isinstance(payoffs, np.ndarray):
-        if payoffs.shape == (3, 3):
+    if isinstance(payoff_data, np.ndarray):
+        if payoff_data.shape == (3, 3):
             return "2P3S"
-        if payoffs.shape == (4, 4):
+        if payoff_data.shape == (4, 4):
             return "2P4S"
         return "unsupported"
 
-    if isinstance(payoffs, (tuple, list)) and payoffs:
-        first = payoffs[0]
+    if isinstance(payoff_data, (tuple, list)) and payoff_data:
+        first = payoff_data[0]
         if first.shape == (2, 2):
             return "2P2S"
         if first.shape == (2, 2, 2):
