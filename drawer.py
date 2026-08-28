@@ -515,7 +515,7 @@ def plot_equilibria(
         return point.tolist()
 
     def _sphere_radius(size):
-        return np.clip(np.sqrt(size) / 200.0, 0.01, 0.08)
+        return np.clip(np.sqrt(size) / 200.0, 0.01, 0.08) * (2.0 / 3.0)
 
     def _plot_spheres(points, color, alpha=0.85):
         if points.size == 0:
@@ -824,6 +824,8 @@ def _set_default_axes_style(ax, game_class, labels):
         ax.set_ylabel(f"Population 2: Pr({labels[0]})")
     elif game_class == "2P3S":
         ax.axis("off")
+    elif game_class == "2P4S":
+        ax.set_axis_off()
 
 
 def _speed_regions(game_class):

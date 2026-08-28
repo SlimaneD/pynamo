@@ -78,7 +78,7 @@ GAME_CATALOG = {
                 np.array([[1, -1], [-1, 1]]),
                 np.array([[-1, 1], [1, -1]]),
             ),
-            strategy_labels=["$p_1$", "$p_2$"],
+            strategy_labels=["H", "T"],
             symmetric=False,
         ),
         2: Game(
@@ -87,7 +87,7 @@ GAME_CATALOG = {
                 np.array([[-1, 5], [0, 2.5]]),
                 np.array([[-1, 5], [0, 2.5]]),
             ),
-            strategy_labels=["$p_H$", "$p_D$"],
+            strategy_labels=["H", "D"],
             symmetric=False,
         ),
     },

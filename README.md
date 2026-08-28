@@ -2,7 +2,6 @@
 
 Tools for plotting replicator dynamics of evolutionary games. The project draws phase portraits on simplices (2D and 3D), highlights equilibria, and ships a small catalogue of example games to try immediately.
 
-
 ## Features
 
 - Replicator dynamics for asymmetric 2-player/2-strategy, symmetric 2-player/3-strategy, symmetric 2-player/4-strategy, and 3-population/2-strategy games.
@@ -36,7 +35,7 @@ launch_replicator_widget()
 
 Pick a game family and example, set the time horizon and number of trajectories, and the widget will render the corresponding simplex with trajectories and equilibria.
 
-## Plotting A Game
+## Plotting a Game
 
 The main plotting interface is `drawer.plot_game`:
 
