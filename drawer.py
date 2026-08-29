@@ -223,7 +223,7 @@ def _draw_arrow_3d(start_point, end_point, fig, ax, arrow_size, arrow_width, arr
     return [quiv]
 
 
-def _is_three_population_cube(payoff_data):
+def _is_three_player_cube(payoff_data):
     return isinstance(payoff_data, (tuple, list)) and hasattr(payoff_data[0], "ndim") and payoff_data[0].ndim == 3
 
 
@@ -254,7 +254,7 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
         for xs, ys in edges:
             lines += plt.plot(xs, ys, color='black', zorder=zorder, alpha=1, clip_on=False)
         return lines
-    if _is_three_population_cube(payoff_data):
+    if _is_three_player_cube(payoff_data):
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_zlim(0, 1)
@@ -388,10 +388,10 @@ def plot_trajectory(
             )
         return psol + psolRev + dirs
 
-    if _is_three_population_cube(payoff_data):
+    if _is_three_player_cube(payoff_data):
         x0, y0, z0 = initial_state
-        sol = odeint(dynamics.replicator_3pop2s, [x0, y0, z0], t, (payoff_data,))
-        solRev = odeint(dynamics.reverse_replicator_3pop2s, [x0, y0, z0], t, (payoff_data,))
+        sol = odeint(dynamics.replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
+        solRev = odeint(dynamics.reverse_replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
         solX, solY, solZ = sol[:, 0], sol[:, 1], sol[:, 2]
         solXrev, solYrev, solZrev = solRev[:, 0], solRev[:, 1], solRev[:, 2]
         psol = ax.plot(solX, solY, solZ, linewidth=0.8, color=line_color, zorder=zorder)
@@ -459,7 +459,7 @@ def plot_equilibria(
 ):
     """Classify and plot equilibria for the given game/payoff_data."""
     source, sink, saddle, center, undetermined = [], [], [], [], []
-    three_pop = _is_three_population_cube(payoff_data)
+    three_player = _is_three_player_cube(payoff_data)
     center_color = source_color if center_color is None else center_color
 
     result = analysis.analyze_equilibria(payoff_data)
@@ -510,7 +510,7 @@ def plot_equilibria(
             return [r, p, 1 - r - p]
         if result.game_class == "2P2S":
             return point.tolist()
-        if three_pop or result.game_class == "2P4S":
+        if three_player or result.game_class == "2P4S":
             return point.tolist()
         return point.tolist()
 
@@ -548,7 +548,7 @@ def plot_equilibria(
         if not points:
             return
         pts = np.array(points)
-        if three_pop or payoff_data[0].shape == (4,):
+        if three_player or payoff_data[0].shape == (4,):
             _plot_spheres(pts, color)
         else:
             ax.scatter(
@@ -566,7 +566,7 @@ def plot_equilibria(
         if not points:
             return
         pts = np.array(points)
-        if three_pop or payoff_data[0].shape == (4,):
+        if three_player or payoff_data[0].shape == (4,):
             _plot_spheres(pts, 'gray', alpha=0.45)
         else:
             ax.scatter(
@@ -618,7 +618,7 @@ def plot_vector_field(
         return _quiver_2d(ax, points, vectors, color, alpha, length, width, zorder, normalize)
 
     if game_class == "3P2S":
-        points, vectors = _vector_field_3pop2s(payoff_data, grid, margin)
+        points, vectors = _vector_field_3p2s(payoff_data, grid, margin)
         return _quiver_3d(ax, points, vectors, color, alpha, length, zorder, normalize)
 
     if game_class == "2P4S":
@@ -871,7 +871,7 @@ def _vector_field_2p3s(payoff_data, grid, margin):
     return np.asarray(points), np.asarray(vectors)
 
 
-def _vector_field_3pop2s(payoff_data, grid, margin):
+def _vector_field_3p2s(payoff_data, grid, margin):
     values = np.linspace(margin, 1.0 - margin, grid)
     points = []
     vectors = []
@@ -879,7 +879,7 @@ def _vector_field_3pop2s(payoff_data, grid, margin):
         for y_val in values:
             for z_val in values:
                 point = np.array([x_val, y_val, z_val])
-                vector = np.asarray(dynamics.replicator_3pop2s(point, 0, payoff_data), dtype=float)
+                vector = np.asarray(dynamics.replicator_3p2s(point, 0, payoff_data), dtype=float)
                 points.append(point)
                 vectors.append(vector)
     return np.asarray(points), np.asarray(vectors)

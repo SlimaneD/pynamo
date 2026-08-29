@@ -28,9 +28,9 @@ def test_replicator_2p4s_shape():
     assert np.all(np.isfinite(vector))
 
 
-def test_replicator_3pop2s_shape():
+def test_replicator_3p2s_shape():
     payoff_data = param.available_games("3P2S")[1].payoff_data
-    vector = dynamics.replicator_3pop2s([0.2, 0.5, 0.8], 0, payoff_data)
+    vector = dynamics.replicator_3p2s([0.2, 0.5, 0.8], 0, payoff_data)
 
     assert np.asarray(vector).shape == (3,)
     assert np.all(np.isfinite(vector))

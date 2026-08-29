@@ -20,8 +20,8 @@ __all__ = [
     "reverse_replicator_2p3s",
     "replicator_2p4s",
     "reverse_replicator_2p4s",
-    "replicator_3pop2s",
-    "reverse_replicator_3pop2s",
+    "replicator_3p2s",
+    "reverse_replicator_3p2s",
     "compute_equilibria",
 ]
 
@@ -117,9 +117,9 @@ def reverse_replicator_2p4s(state, t, payoff_data):
     return -replicator_2p4s(state, t, payoff_data)
 
 
-# Replicator dynamics for a 3-population 2-action game
+# Replicator dynamics for a 3-player 2-strategy game
 def _expected_payoff(pay_tensor, probs, player_index, action):
-    """Compute expected payoff for a given player and action in a 3-population 2-action game."""
+    """Compute expected payoff for a given player and action in a 3-player 2-strategy game."""
     total = 0.0
     for a0 in (0, 1):
         for a1 in (0, 1):
@@ -137,8 +137,8 @@ def _expected_payoff(pay_tensor, probs, player_index, action):
     return total
 
 
-def replicator_3pop2s(state, t, payoff_tensors):
-    """Replicator dynamics for three populations with two actions each."""
+def replicator_3p2s(state, t, payoff_tensors):
+    """Replicator dynamics for three players with two strategies each."""
     x, y, z = state
     probs = [x, y, z]
     tensors = payoff_tensors
@@ -155,9 +155,9 @@ def replicator_3pop2s(state, t, payoff_tensors):
     return np.array([dx, dy, dz])
 
 
-def reverse_replicator_3pop2s(state, t, payoff_tensors):
-    """Opposite replicator dynamics for the three-population 2-action game."""
-    return -replicator_3pop2s(state, t, payoff_tensors)
+def reverse_replicator_3p2s(state, t, payoff_tensors):
+    """Opposite replicator dynamics for the three-player 2-strategy game."""
+    return -replicator_3p2s(state, t, payoff_tensors)
 
 
 def compute_equilibria(payoff_data):
@@ -229,7 +229,7 @@ def compute_equilibria(payoff_data):
 
     elif payoff_data[0].shape == (2, 2, 2):
         z_sym = Symbol('z')
-        dx, dy, dz = replicator_3pop2s([x_sym, y_sym, z_sym], time_0, payoff_data)
+        dx, dy, dz = replicator_3p2s([x_sym, y_sym, z_sym], time_0, payoff_data)
         solutions = solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
         equilibria, degenerate = _extract_isolated_solutions(
             solutions, (x_sym, y_sym, z_sym)

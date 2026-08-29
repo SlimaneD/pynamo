@@ -25,8 +25,8 @@ else:
 GAME_LABELS = {
     "2P3S": "Symmetric 2-player / 3-strategy",
     "2P4S": "Symmetric 2-player / 4-strategy",
-    "2P2S": "Asymmetric 2-pop / 2-strategy",
-    "3P2S": "Three populations / 2-strategy",
+    "2P2S": "Asymmetric 2-player / 2-strategy",
+    "3P2S": "Asymmetric 3-player / 2-strategy",
 }
 
 
@@ -37,10 +37,10 @@ def _sample_initial_conditions(payoff, count: int, rng: np.random.Generator) -> 
         return [vec[:-1].tolist() for vec in samples]
 
     first = payoff[0]
-    if first.ndim == 2:  # 2-pop 2-strategy
+    if first.ndim == 2:  # asymmetric 2-player 2-strategy
         return rng.random((count, 2)).tolist()
 
-    if first.ndim == 3:  # cube (three populations)
+    if first.ndim == 3:  # cube (three players)
         return rng.random((count, 3)).tolist()
 
     return rng.random((count, 2)).tolist()
@@ -81,7 +81,7 @@ def _plot(
         trajectory_arrows=_arrow_positions(num_arrows),
         trajectory_color=trajectory_color,
         show_speed=show_speed,
-        speed_cmap=plt.cm.Spectral,
+        speed_cmap=plt.cm.plasma,
         speed_levels=80,
         show_vector_field=show_vector_field,
         show_equilibria=show_equilibria,

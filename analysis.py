@@ -165,7 +165,7 @@ def _eigen_data(reduced, payoff_data, game_class):
 
     if game_class == "3P2S":
         matrix = _numeric_jacobian(
-            lambda state: dynamics.replicator_3pop2s(state, 0, payoff_data), reduced
+            lambda state: dynamics.replicator_3p2s(state, 0, payoff_data), reduced
         )
         return np.linalg.eig(matrix)
 
@@ -177,10 +177,24 @@ def _numeric_jacobian(field_function, point, eps: float = 1e-6):
     f0 = np.asarray(field_function(point), dtype=float)
     jacobian = np.zeros((point.size, point.size), dtype=float)
     for axis in range(point.size):
-        perturbed = point.copy()
-        perturbed[axis] = np.clip(perturbed[axis] + eps, 0.0, 1.0)
-        f1 = np.asarray(field_function(perturbed), dtype=float)
-        jacobian[:, axis] = (f1 - f0) / eps
+        if point[axis] <= eps:
+            perturbed = point.copy()
+            perturbed[axis] += eps
+            f1 = np.asarray(field_function(perturbed), dtype=float)
+            jacobian[:, axis] = (f1 - f0) / eps
+        elif point[axis] >= 1.0 - eps:
+            perturbed = point.copy()
+            perturbed[axis] -= eps
+            f1 = np.asarray(field_function(perturbed), dtype=float)
+            jacobian[:, axis] = (f0 - f1) / eps
+        else:
+            forward = point.copy()
+            backward = point.copy()
+            forward[axis] += eps
+            backward[axis] -= eps
+            f_forward = np.asarray(field_function(forward), dtype=float)
+            f_backward = np.asarray(field_function(backward), dtype=float)
+            jacobian[:, axis] = (f_forward - f_backward) / (2.0 * eps)
     return jacobian
 
 
@@ -200,7 +214,7 @@ def _nash_status(reduced, payoff_data, game_class, tol: float = 1e-8):
     if game_class == "2P2S":
         return _asymmetric_2p2s_nash_status(reduced, payoff_data, tol)
     if game_class == "3P2S":
-        return _three_pop_two_action_nash_status(reduced, payoff_data, tol)
+        return _three_player_two_strategy_nash_status(reduced, payoff_data, tol)
     return None, None
 
 
@@ -222,7 +236,7 @@ def _asymmetric_2p2s_nash_status(reduced, payoff_matrices, tol: float):
     )
 
 
-def _three_pop_two_action_nash_status(reduced, payoff_tensors, tol: float):
+def _three_player_two_strategy_nash_status(reduced, payoff_tensors, tol: float):
     probabilities_action_1 = np.asarray(reduced, dtype=float)
     mixed_strategies = [
         np.array([1.0 - prob, prob]) for prob in probabilities_action_1

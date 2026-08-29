@@ -4,7 +4,7 @@ Tools for plotting replicator dynamics of evolutionary games. The project draws 
 
 ## Features
 
-- Replicator dynamics for asymmetric 2-player/2-strategy, symmetric 2-player/3-strategy, symmetric 2-player/4-strategy, and 3-population/2-strategy games.
+- Replicator dynamics for asymmetric 2-player/2-strategy, symmetric 2-player/3-strategy, symmetric 2-player/4-strategy, and 3-player/2-strategy games.
 - Preloaded game catalogue (Matching Pennies, Rock–Paper–Scissors variants, Hawk–Dove, Skyrms 1992, and more).
 - Matplotlib plots of trajectories, equilibria, and speed fields on the appropriate simplex.
 - Optional Jupyter widgets to explore trajectories interactively without touching code.
