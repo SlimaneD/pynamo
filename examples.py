@@ -1,27 +1,92 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 30 11:52:00 2020
+"""Built-in example games shipped with pyNamo."""
 
-@author: Benjamin Giraudon
+from __future__ import annotations
 
-Status : OK
-"""
+from typing import Dict, Iterable, Iterator, Tuple
+
 import numpy as np
 
-from game import Game, game_names
+from game import Game
 
-__all__ = [
-    "GAME_CLASS_MENU",
-    "GAME_CATALOG",
-    "GAME_NAMES_2P3S",
-    "GAME_NAMES_2P2S",
-    "GAME_NAMES_2P4S",
-    "GAME_NAMES_3P2S",
-    "arrow_size",
-    "arrow_width",
-    "time_step",
-    "available_games",
-]
+__all__ = ["GameCatalog", "games"]
+
+
+class GameCatalog:
+    """Named collection of built-in example games.
+
+    Games can be accessed by attribute, by string lookup, or by game class.
+
+    Examples
+    --------
+    >>> import examples
+    >>> examples.games.good_rps
+    >>> examples.games("good_rps")
+    >>> examples.games.by_class("2P2S")
+    """
+
+    def __init__(self, games_by_name: Dict[str, Game]) -> None:
+        """Create a game catalog.
+
+        Parameters
+        ----------
+        games_by_name : dict of str to game.Game
+            Mapping from stable example identifiers to Game objects.
+        """
+        self._games = dict(games_by_name)
+
+    def __call__(self, name: str) -> Game:
+        """Return a game by its string identifier.
+
+        Parameters
+        ----------
+        name : str
+            Identifier of a built-in example game.
+
+        Returns
+        -------
+        game.Game
+            The requested example game.
+        """
+        return self._games[name]
+
+    def __getattr__(self, name: str) -> Game:
+        try:
+            return self._games[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._games
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._games)
+
+    def items(self) -> Iterable[Tuple[str, Game]]:
+        """Return `(name, game)` pairs for all examples."""
+        return self._games.items()
+
+    def names(self) -> list[str]:
+        """Return the list of available example names."""
+        return list(self._games)
+
+    def by_class(self, game_class: str) -> Dict[str, Game]:
+        """Return all examples matching a supported game class.
+
+        Parameters
+        ----------
+        game_class : str
+            One of "2P2S", "2P3S", "2P4S", or "3P2S".
+
+        Returns
+        -------
+        dict of str to game.Game
+            Examples whose inferred game class matches `game_class`.
+        """
+        return {
+            name: game
+            for name, game in self._games.items()
+            if game.game_class == game_class
+        }
 
 
 def _coordination_tensor():
@@ -100,13 +165,18 @@ def _repeated_pd_tft_allc_alld(b=4.0, c=1.0, w=0.5):
     )
 
 
-def _inclusive_fitness_pd(b=4.0, c=1.0, r=0.5):
-    """Prisoner's Dilemma with relatedness included in inclusive-fitness payoffs."""
+def _predator_prey_prey_payoffs():
+    """Prey payoffs for the predator-prey behavioral-conflict example."""
     return np.array(
-        [
-            [(1.0 + r) * (b - c), -c + r * b],
-            [b - r * c, 0.0],
-        ],
+        [[0.0, 3.0], [2.0, 1.0]],
+        dtype=float,
+    )
+
+
+def _predator_prey_predator_payoffs():
+    """Predator payoffs for the predator-prey behavioral-conflict example."""
+    return np.array(
+        [[4.0, 1.0], [3.0, 0.0]],
         dtype=float,
     )
 
@@ -124,47 +194,42 @@ def _ownership_game(v=2.0, c=3.0):
     )
 
 
-# Example game catalogue, indexed by supported game-class identifier.
-GAME_CLASS_MENU = {1: "arrow", 2: "2P3S", 3: "2P2S", 4: "2P4S", 5: "3P2S"}
-
-GAME_CATALOG = {
-    "2P3S": {
-        1: Game(
+games = GameCatalog(
+    {
+        "good_rps": Game(
             "Good RPS",
             np.array([[0, -1, 2], [2, 0, -1], [-1, 2, 0]]),
             strategy_labels=["$R$", "$P$", "$S$"],
-            description="Rock–Paper–Scissors game with interior equilibrium.",
+            description="Rock-Paper-Scissors game with interior equilibrium.",
         ),
-        2: Game(
+        "hawk_dove_retaliator": Game(
             "Hawk-Dove-Retaliator",
             _hawk_dove_retaliator(),
             strategy_labels=["Hawk", "Dove", "Retaliator"],
             description="McElreath & Boyd Figure 2.3, with v/c = 2/3.",
         ),
-        3: Game(
+        "standard_rps": Game(
             "Standard RPS",
             np.array([[0, -1, 1], [1, 0, -1], [-1, 1, 0]]),
             strategy_labels=["R", "P", "S"],
         ),
-        4: Game(
+        "coordination_123": Game(
             "123 Coordination",
             np.array([[1, 0, 0], [0, 2, 0], [0, 0, 3]]),
             strategy_labels=["1", "2", "3"],
         ),
-        5: Game(
+        "pure_coordination": Game(
             "Pure Coordination",
             np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             strategy_labels=["1", "2", "3"],
         ),
-        6: Game(
+        "repeated_pd_tft_allc_alld": Game(
             "Repeated PD: TFT, ALLC, ALLD",
             _repeated_pd_tft_allc_alld(),
             strategy_labels=["TFT", "ALLC", "ALLD"],
             description="McElreath & Boyd Figure 4.1, with b/c = 4 and w = 0.5.",
         ),
-    },
-    "2P2S": {
-        1: Game(
+        "matching_pennies": Game(
             "Matching Pennies",
             (
                 np.array([[1, -1], [-1, 1]]),
@@ -173,7 +238,7 @@ GAME_CATALOG = {
             strategy_labels=["H", "T"],
             symmetric=False,
         ),
-        2: Game(
+        "two_player_hawk_dove": Game(
             "2-player Hawk-Dove",
             (
                 np.array([[-1, 5], [0, 2.5]]),
@@ -182,7 +247,7 @@ GAME_CATALOG = {
             strategy_labels=["H", "D"],
             symmetric=False,
         ),
-        3: Game(
+        "battle_of_the_sexes": Game(
             "Battle of the Sexes",
             (
                 np.array([[2, 0], [0, 1]]),
@@ -191,32 +256,49 @@ GAME_CATALOG = {
             strategy_labels=["B", "S"],
             symmetric=False,
         ),
-        4: Game(
-            "PD with Relatedness",
+        "predator_prey_behavioral_conflict": Game(
+            "Predator-Prey Behavioral Conflict",
             (
-                _inclusive_fitness_pd(),
-                _inclusive_fitness_pd(),
+                _predator_prey_prey_payoffs(),
+                _predator_prey_predator_payoffs(),
             ),
-            strategy_labels=["C", "D"],
+            strategy_labels=["Fight", "Flee"],
+            player_strategy_labels=[
+                ["Fight", "Flee"],
+                ["Aggressive", "Cautious"],
+            ],
+            player_labels=["Prey", "Predator"],
             description=(
-                "Prisoner's Dilemma with relatedness folded into inclusive-fitness "
-                "payoffs; b = 4, c = 1, r = 0.5, so r > c/b."
+                "Two-population predator-prey trait-frequency model. Prey fight "
+                "or flee; predators are aggressive or cautious."
             ),
             symmetric=False,
         ),
-    },
-    "2P4S": {
-        1: Game(
+        "hofbauer_swinkels": Game(
             "Hofbauer-Swinkels",
-            np.array([[0, 0, -1, 0], [0, 0, 0, -1], [-1, 0, 0, 0], [0, -1, 0, 0]]),
+            np.array(
+                [
+                    [0, 0, -1, 0],
+                    [0, 0, 0, -1],
+                    [-1, 0, 0, 0],
+                    [0, -1, 0, 0],
+                ]
+            ),
             strategy_labels=["$R$", "$P$", "$S$", "$T$"],
         ),
-        2: Game(
+        "skyrms_1992": Game(
             "Skyrms 1992",
-            np.array([[0, -12, 0, 22], [20, 0, 0, -10], [-21, -4, 0, 35], [10, -2, 2, 0]]),
+            np.array(
+                [
+                    [0, -12, 0, 22],
+                    [20, 0, 0, -10],
+                    [-21, -4, 0, 35],
+                    [10, -2, 2, 0],
+                ]
+            ),
             strategy_labels=["1", "2", "3", "4"],
         ),
-        3: Game(
+        "ownership_game": Game(
             "Ownership Game",
             _ownership_game(),
             strategy_labels=["Hawk", "Dove", "Bourgeois", "Anti-Bourgeois"],
@@ -224,16 +306,14 @@ GAME_CATALOG = {
                 "Maynard Smith-Parker ownership asymmetry game with v = 2 and c = 3."
             ),
         ),
-    },
-    "3P2S": {
-        1: Game(
+        "coordination_cube": Game(
             "Coordination Cube",
             tuple(_coordination_tensor() for _ in range(3)),
             strategy_labels=["$x_A$", "$x_B$", "$x_C$"],
             description="Three-player coordination where everyone prefers matching actions.",
             symmetric=False,
         ),
-        2: Game(
+        "cyclic_mismatching_pennies": Game(
             "Cyclic Mismatching Pennies",
             _cyclic_mismatching_pennies_tensors(),
             strategy_labels=["$x = P_1(T)$", "$y = P_2(T)$", "$z = P_3(T)$"],
@@ -243,7 +323,7 @@ GAME_CATALOG = {
             ),
             symmetric=False,
         ),
-        3: Game(
+        "cyclic_matching_pennies": Game(
             "Cyclic Matching Pennies",
             _cyclic_matching_pennies_tensors(),
             strategy_labels=["$x = P_1(T)$", "$y = P_2(T)$", "$z = P_3(T)$"],
@@ -253,20 +333,5 @@ GAME_CATALOG = {
             ),
             symmetric=False,
         ),
-    },
-}
-
-GAME_NAMES_2P3S = game_names(GAME_CATALOG["2P3S"].items())
-GAME_NAMES_2P2S = game_names(GAME_CATALOG["2P2S"].items())
-GAME_NAMES_2P4S = game_names(GAME_CATALOG["2P4S"].items())
-GAME_NAMES_3P2S = game_names(GAME_CATALOG["3P2S"].items())
-
-# Drawer parameters
-arrow_size = 1 / 25.0
-arrow_width = (1 / 2) * arrow_size
-time_step = 0.01
-
-
-def available_games(game_class):
-    """Return the mapping of example IDs to Game instances for the requested game class."""
-    return GAME_CATALOG.get(game_class, {})
+    }
+)

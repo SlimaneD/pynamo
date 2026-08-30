@@ -25,7 +25,12 @@ __all__ = [
 
 
 class Game:
-    """Lightweight container for matrix games used throughout pyNamo."""
+    """Normal-form game container used by pyNamo.
+
+    The class stores payoff data, strategy labels, player labels, and basic
+    metadata. It does not compute dynamics by itself; plotting and analysis
+    modules consume Game objects.
+    """
 
     def __init__(
         self,
@@ -33,12 +38,98 @@ class Game:
         payoff_matrices: RawPayoffData,
         *,
         strategy_labels: Optional[Sequence[str]] = None,
+        player_strategy_labels: Optional[Sequence[Sequence[str]]] = None,
+        player_labels: Optional[Sequence[str]] = None,
         description: str = "",
         symmetric: Optional[bool] = None,
     ) -> None:
+        """Create a normal-form game supported by pyNamo.
+
+        Parameters
+        ----------
+        name : str
+            Human-readable name of the game. Used in plot titles and example
+            displays.
+        payoff_matrices : array-like or tuple of array-like
+            Payoff data defining the game.
+
+            For symmetric 2-player games, pass one square payoff matrix. Entry
+            `payoff_matrices[i, j]` is the payoff to a player using strategy i
+            against an opponent using strategy j.
+
+            For asymmetric 2-player / 2-strategy games, pass a tuple
+            `(payoff_player_1, payoff_player_2)`, where both matrices have
+            shape `(2, 2)`. Rows correspond to player 1's strategies and
+            columns correspond to player 2's strategies. Entry `[i, j]` is
+            evaluated at player 1 strategy i and player 2 strategy j.
+
+            For asymmetric 3-player / 2-strategy games, pass a tuple
+            `(payoff_player_1, payoff_player_2, payoff_player_3)`, where each
+            payoff tensor has shape `(2, 2, 2)`. Entry `[i, j, k]` is evaluated
+            at player 1 strategy i, player 2 strategy j, and player 3 strategy
+            k.
+        strategy_labels : sequence of str, optional
+            Shared strategy labels. For symmetric games, these label the rows
+            and columns of the payoff matrix. For asymmetric games, these are
+            used as a fallback when all players have the same strategy labels.
+        player_strategy_labels : sequence of sequence of str, optional
+            Player-specific strategy labels. Use this for asymmetric games when
+            players have different strategy names. For example:
+            `[["Fight", "Flee"], ["Aggressive", "Cautious"]]`.
+        player_labels : sequence of str, optional
+            Labels for players or populations. Used in axis labels, payoff
+            displays, and analysis output where relevant. For example:
+            `["Prey", "Predator"]`.
+        description : str, default=""
+            Optional longer description of the game. Used by example catalogues
+            and documentation-facing interfaces.
+        symmetric : bool or None, optional
+            Whether the game is symmetric. If None, pyNamo infers symmetry from
+            the payoff representation: one matrix means symmetric, a tuple of
+            matrices or tensors means asymmetric. If supplied, the value must
+            be consistent with the payoff representation.
+
+        Attributes
+        ----------
+        name : str
+            Human-readable game name.
+        payoff_data : numpy.ndarray or tuple of numpy.ndarray
+            Normalized payoff representation used internally by pyNamo.
+        strategy_labels : list of str
+            Shared strategy labels.
+        player_strategy_labels : list of list of str
+            Strategy labels for each player or population.
+        player_labels : list of str
+            Player or population labels.
+        symmetric : bool
+            Whether the game is treated as symmetric.
+        game_class : str
+            Supported pyNamo game-class identifier inferred from the payoff
+            data. Currently one of "2P2S", "2P3S", "2P4S", "3P2S", or
+            "unsupported".
+
+        Notes
+        -----
+        pyNamo currently supports only games whose payoff data identify one of
+        the implemented low-dimensional plotting classes:
+
+        - "2P2S": asymmetric 2-player / 2-strategy games
+        - "2P3S": symmetric 2-player / 3-strategy games
+        - "2P4S": symmetric 2-player / 4-strategy games
+        - "3P2S": asymmetric 3-player / 2-strategy games
+
+        For equilibrium tables and trajectories, strategy order matters. In
+        symmetric games, probability vectors follow `strategy_labels`. In
+        2-strategy asymmetric games, reduced coordinates are probabilities of
+        the first listed strategy for each player.
+        """
         self.name = name
         self.description = description
         self.strategy_labels: List[str] = list(strategy_labels or [])
+        self.player_strategy_labels: List[List[str]] = [
+            list(labels) for labels in (player_strategy_labels or [])
+        ]
+        self.player_labels: List[str] = list(player_labels or [])
         self._payoff = self._normalize_payoff(payoff_matrices)
 
         inferred_symmetry = not isinstance(self._payoff, tuple)
@@ -54,6 +145,7 @@ class Game:
 
         self._validate_dimensions()
         self._ensure_label_defaults()
+        self._ensure_player_label_defaults()
 
     @property
     def payoff_data(self) -> Union[PayoffMatrix, PayoffCollection]:
@@ -81,6 +173,21 @@ class Game:
         if self.symmetric:
             return self._payoff.shape[0]  # type: ignore[return-value]
         return self._payoff[0].shape[0]  # type: ignore[index]
+
+    def num_players(self) -> int:
+        """Number of populations/players represented in the game."""
+        if self.symmetric:
+            return 1
+        return len(self._payoff)  # type: ignore[arg-type]
+
+    def strategy_labels_for_player(self, player: int) -> List[str]:
+        """Return strategy labels for a specific population/player."""
+        try:
+            return self.player_strategy_labels[player]
+        except IndexError as exc:  # pragma: no cover - defensive
+            raise ValueError(
+                f"Player index {player} out of range for game '{self.name}'."
+            ) from exc
 
     def expected_payoffs(self, mixed_strategies: Sequence[Sequence[float]]) -> np.ndarray:
         """Expected payoff to each pure strategy under the supplied mixed strategies."""
@@ -155,6 +262,32 @@ class Game:
         count = self.num_strategies()
         default_labels = [f"S{i+1}" for i in range(count)]
         self.strategy_labels = default_labels
+
+    def _ensure_player_label_defaults(self) -> None:
+        players = self.num_players()
+        strategy_count = self.num_strategies()
+
+        if self.player_strategy_labels:
+            if len(self.player_strategy_labels) != players:
+                raise ValueError(
+                    "player_strategy_labels must provide one label list per player."
+                )
+            if any(len(labels) != strategy_count for labels in self.player_strategy_labels):
+                raise ValueError(
+                    "Each player_strategy_labels entry must match the number of strategies."
+                )
+        else:
+            self.player_strategy_labels = [
+                list(self.strategy_labels) for _ in range(players)
+            ]
+
+        if self.player_labels:
+            if len(self.player_labels) != players:
+                raise ValueError("player_labels must provide one label per player.")
+        else:
+            self.player_labels = (
+                ["Population"] if self.symmetric else [f"Population {i+1}" for i in range(players)]
+            )
 
     def _as_probability_vector(
         self, strategy: Sequence[float], expected_size: int

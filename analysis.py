@@ -1,7 +1,7 @@
 """Structured equilibrium analysis for pyNamo games.
 
-This module separates mathematical analysis from plotting.  Plotting functions
-can consume these records, while notebooks can display them as tables.
+This module separates mathematical analysis from plotting. Plotting functions
+can consume analyzed equilibria, while notebooks can display them as tables.
 """
 
 from __future__ import annotations
@@ -19,10 +19,13 @@ from game import infer_game_class
 
 __all__ = [
     "InconclusiveStabilityWarning",
-    "EquilibriumRecord",
+    "AnalyzedEquilibrium",
     "EquilibriumAnalysis",
     "analyze_equilibria",
     "equilibrium_table",
+    "find_nash",
+    "find_strict_nash",
+    "find_ess",
 ]
 
 
@@ -34,7 +37,7 @@ warnings.simplefilter("always", InconclusiveStabilityWarning)
 
 
 @dataclass
-class EquilibriumRecord:
+class AnalyzedEquilibrium:
     """Analysis data for one isolated equilibrium."""
 
     reduced_position: np.ndarray
@@ -52,30 +55,108 @@ class EquilibriumRecord:
 
 @dataclass
 class EquilibriumAnalysis:
-    """Collection of equilibrium records plus global analysis metadata."""
+    """Container returned by analyze_equilibria.
 
-    records: List[EquilibriumRecord]
+    Attributes
+    ----------
+    equilibria : list of AnalyzedEquilibrium
+        One entry per isolated equilibrium detected by pyNamo.
+    game_class : str
+        Supported pyNamo game-class identifier: "2P2S", "2P3S", "2P4S", or
+        "3P2S".
+    degenerate : bool, default=False
+        True when the symbolic equilibrium solver detected a non-isolated or
+        parametric equilibrium set.
+    message : str or None, optional
+        Warning message describing global analysis issues, usually degeneracy.
+
+    Notes
+    -----
+    Table positions are full mixed strategies. Entries follow the strategy order
+    supplied when defining the game. For 2-strategy asymmetric games, each
+    coordinate is the probability that the corresponding player uses their first
+    listed strategy.
+    """
+
+    equilibria: List[AnalyzedEquilibrium]
     game_class: str
     degenerate: bool = False
     message: Optional[str] = None
 
     def to_rows(self, ndigits: int = 6) -> List[dict]:
-        """Return a list of dictionaries suitable for table display."""
-        return [_record_to_row(record, ndigits) for record in self.records]
+        """Return equilibrium analysis as table rows.
+
+        Parameters
+        ----------
+        ndigits : int, default=6
+            Number of decimal places used when formatting numeric values.
+
+        Returns
+        -------
+        rows : list of dict
+            List of dictionaries with columns matching equilibrium_table.
+
+        Notes
+        -----
+        The Position column follows the strategy order stored in the Game object.
+        In 2P2S and 3P2S games, each coordinate is the probability of the first
+        listed strategy for that player.
+        """
+        return [_equilibrium_to_row(equilibrium, ndigits) for equilibrium in self.equilibria]
 
     def to_dataframe(self, ndigits: int = 6):
-        """Return a pandas DataFrame if pandas is installed."""
+        """Return equilibrium analysis as a pandas DataFrame.
+
+        Parameters
+        ----------
+        ndigits : int, default=6
+            Number of decimal places used when formatting numeric values.
+
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame with the same columns as equilibrium_table.
+        """
         import pandas as pd
 
         return pd.DataFrame(self.to_rows(ndigits=ndigits))
 
 
 def analyze_equilibria(game) -> EquilibriumAnalysis:
-    """Compute equilibrium positions, stability, eigenvalues, and eigenvectors."""
+    """Analyze isolated equilibria of a supported game.
+
+    Parameters
+    ----------
+    game : game.Game or payoff data
+        Game to analyze. Passing a Game object is recommended because it
+        preserves labels and metadata. Raw payoff data are also accepted.
+
+    Returns
+    -------
+    EquilibriumAnalysis
+        Structured equilibrium analysis including positions, stability status,
+        admissible eigenvalues/eigenvectors, Nash status, strict Nash status,
+        ESS status where applicable, and warnings.
+
+    Warns
+    -----
+    dynamics.DegenerateEquilibriumWarning
+        Raised when the symbolic solver detects a non-isolated or parametric
+        equilibrium set.
+    InconclusiveStabilityWarning
+        Raised when the implemented stability criteria do not determine the
+        stability of an isolated equilibrium.
+
+    Notes
+    -----
+    Returned positions follow the strategy order supplied when defining the game.
+    For 2-strategy asymmetric games, each coordinate is the probability that the
+    corresponding player uses their first listed strategy.
+    """
     payoff_data = _payoff_data(game)
     game_class = infer_game_class(game)
     raw_equilibria = dynamics.compute_equilibria(payoff_data)
-    records = []
+    equilibria = []
 
     for eq in raw_equilibria:
         reduced = np.asarray(eq, dtype=float)
@@ -108,8 +189,8 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
                         warning, InconclusiveStabilityWarning, stacklevel=2
                     )
 
-        records.append(
-            EquilibriumRecord(
+        equilibria.append(
+            AnalyzedEquilibrium(
                 reduced_position=reduced,
                 full_position=_full_position(reduced, game_class),
                 stability=stability,
@@ -125,7 +206,7 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
         )
 
     return EquilibriumAnalysis(
-        records=records,
+        equilibria=equilibria,
         game_class=game_class,
         degenerate=getattr(raw_equilibria, "degenerate", False),
         message=getattr(raw_equilibria, "message", None),
@@ -133,8 +214,100 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
 
 
 def equilibrium_table(game, ndigits: int = 6):
-    """Convenience wrapper returning a pandas table of equilibrium analysis."""
+    """Return a pandas table summarizing equilibrium analysis.
+
+    Parameters
+    ----------
+    game : game.Game or payoff data
+        Game to analyze. Passing a Game object is recommended.
+    ndigits : int, default=6
+        Number of decimal places used when formatting numeric values.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Table with columns Position, Stability Status, Nash, ESS, Strict Nash,
+        Eigenvalues, Eigenvectors, and Warning.
+
+    Notes
+    -----
+    The Position column follows the strategy order supplied when defining the
+    game. For 2P2S and 3P2S games, each coordinate is the probability of the
+    first listed strategy for that player.
+
+    The table reports only isolated equilibria. If non-isolated equilibrium
+    manifolds are detected, pyNamo emits a warning and reports any isolated
+    equilibria it can still identify.
+    """
     return analyze_equilibria(game).to_dataframe(ndigits=ndigits)
+
+
+def find_nash(game):
+    """Return all isolated Nash equilibria detected for the game.
+
+    Parameters
+    ----------
+    game : game.Game or payoff data
+        Game to analyze.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        Full equilibrium positions using the same convention as
+        equilibrium_table.
+    """
+    return [
+        equilibrium.full_position
+        for equilibrium in analyze_equilibria(game).equilibria
+        if equilibrium.nash is True
+    ]
+
+
+def find_strict_nash(game):
+    """Return all isolated strict Nash equilibria detected for the game.
+
+    Parameters
+    ----------
+    game : game.Game or payoff data
+        Game to analyze.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        Full equilibrium positions using the same convention as
+        equilibrium_table.
+    """
+    return [
+        equilibrium.full_position
+        for equilibrium in analyze_equilibria(game).equilibria
+        if equilibrium.strict_nash is True
+    ]
+
+
+def find_ess(game):
+    """Return all isolated ESS detected for symmetric games.
+
+    Parameters
+    ----------
+    game : game.Game or payoff data
+        Game to analyze.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        Full equilibrium positions using the same convention as
+        equilibrium_table.
+
+    Notes
+    -----
+    ESS is evaluated only for symmetric games. For asymmetric games, no ESS
+    entries are returned.
+    """
+    return [
+        equilibrium.full_position
+        for equilibrium in analyze_equilibria(game).equilibria
+        if equilibrium.ess is True
+    ]
 
 
 def _payoff_data(game):
@@ -459,16 +632,16 @@ def _unresolved_warning(reduced, game_class):
     )
 
 
-def _record_to_row(record: EquilibriumRecord, ndigits: int) -> dict:
+def _equilibrium_to_row(equilibrium: AnalyzedEquilibrium, ndigits: int) -> dict:
     return {
-        "Position": _format_array(record.full_position, ndigits),
-        "Stability Status": record.stability,
-        "Nash": record.nash,
-        "ESS": record.ess,
-        "Strict Nash": record.strict_nash,
-        "Eigenvalues": _format_array(record.admissible_eigenvalues, ndigits),
-        "Eigenvectors": _format_matrix(record.admissible_eigenvectors, ndigits),
-        "Warning": record.warning,
+        "Position": _format_array(equilibrium.full_position, ndigits),
+        "Stability Status": equilibrium.stability,
+        "Nash": equilibrium.nash,
+        "ESS": equilibrium.ess,
+        "Strict Nash": equilibrium.strict_nash,
+        "Eigenvalues": _format_array(equilibrium.admissible_eigenvalues, ndigits),
+        "Eigenvectors": _format_matrix(equilibrium.admissible_eigenvectors, ndigits),
+        "Warning": equilibrium.warning,
     }
 
 

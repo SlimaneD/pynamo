@@ -1,12 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jun 17 16:22:02 2020
+"""Plotting utilities for pyNamo replicator dynamics.
 
-@author: Benjamin Giraudon
-Status : - need to check for presence of LaTeX installation on the device
-         - better management of equilibria in 3D games (2P4S)
-         To add : - feature that plots higher dimension manifolds
-                  - automatically draw relevant trajectories
+The main public entry point is plot_game. Lower-level functions remain
+available for advanced users who want direct control over state spaces,
+trajectories, speed fields, vector fields, and equilibrium markers.
 """
 
 import math
@@ -28,10 +24,10 @@ from game import infer_game_class
 
 __all__ = [
     "PlottingWarning",
-    "p_to_sim",
-    "sim_to_p",
-    "sim_to_p_2p4s",
-    "p_to_sim_2p4s",
+    "simplex_to_plane_2p3s",
+    "plane_to_simplex_2p3s",
+    "simplex_to_plane_2p4s",
+    "plane_to_simplex_2p4s",
     "draw_state_space",
     "plot_trajectory",
     "plot_equilibria",
@@ -86,167 +82,252 @@ DEFAULT_PLOT_STYLE = {
 }
 
 
-def p_to_sim(x, y):
+def simplex_to_plane_2p3s(x, y):
     """Convert simplex coordinates to 2P3S plotting plane."""
     return [-0.5 * x - y + 1, (np.sqrt(3) / 2) * x]
 
 
-def sim_to_p(x, y):
+def plane_to_simplex_2p3s(x, y):
     """Convert 2P3S plotting plane coordinates back to simplex coordinates."""
     return [2 / 3 * np.sqrt(3) * y, -1 / 3 * np.sqrt(3) * y - x + 1]
 
 
-def sim_to_p_2p4s(x, y, z):
+def simplex_to_plane_2p4s(x, y, z):
     """Convert simplex coordinates to 2P4S 3D plotting space."""
     return [0.5 * (-y + z + 1), np.sqrt(3) / 4 * (x - y - z + 1), -np.sqrt(13) / 4 * (x + y + z - 1)]
 
 
-def p_to_sim_2p4s(x, y, z):
+def plane_to_simplex_2p4s(x, y, z):
     """Convert 2P4S plotting space coordinates back to simplex coordinates."""
     return [2 * (np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z), -x + np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z + 1, x + np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z]
 
 
-def _arrow_tip_candidates(x_A, y_A, s, a):
-    """Coordinates of the arrow tip offset from (x_A, y_A) along slope s with length a."""
+def _arrow_tip_candidates(x_A, y_A, slope, arrow_size):
+    """Coordinates of the arrow tip offset from (x_A, y_A)."""
     return [
-        [((s**2 + 1) * x_A - np.sqrt(s**2 + 1) * a) / (s**2 + 1), -((np.sqrt(s**2 + 1) * a * s - (s**2 + 1) * y_A) / (s**2 + 1))],
-        [((s**2 + 1) * x_A + np.sqrt(s**2 + 1) * a) / (s**2 + 1), ((np.sqrt(s**2 + 1) * a * s + (s**2 + 1) * y_A) / (s**2 + 1))],
+        [
+            ((slope**2 + 1) * x_A - np.sqrt(slope**2 + 1) * arrow_size) / (slope**2 + 1),
+            -((np.sqrt(slope**2 + 1) * arrow_size * slope - (slope**2 + 1) * y_A) / (slope**2 + 1)),
+        ],
+        [
+            ((slope**2 + 1) * x_A + np.sqrt(slope**2 + 1) * arrow_size) / (slope**2 + 1),
+            ((np.sqrt(slope**2 + 1) * arrow_size * slope + (slope**2 + 1) * y_A) / (slope**2 + 1)),
+        ],
     ]
 
 
-def _arrow_base_candidates(x_F, y_F, s, c):
-    """Coordinates of the arrow base points around (x_F, y_F) with width c along slope s."""
+def _arrow_base_candidates(x_F, y_F, slope, arrow_width):
+    """Coordinates of the arrow base points around (x_F, y_F)."""
     return [
-        [((s**2 + 1) * x_F - np.sqrt(s**2 + 1) * c) / (s**2 + 1), -((np.sqrt(s**2 + 1) * c * s - (s**2 + 1) * y_F) / (s**2 + 1))],
-        [((s**2 + 1) * x_F + np.sqrt(s**2 + 1) * c) / (s**2 + 1), ((np.sqrt(s**2 + 1) * c * s + (s**2 + 1) * y_F) / (s**2 + 1))],
+        [
+            ((slope**2 + 1) * x_F - np.sqrt(slope**2 + 1) * arrow_width) / (slope**2 + 1),
+            -((np.sqrt(slope**2 + 1) * arrow_width * slope - (slope**2 + 1) * y_F) / (slope**2 + 1)),
+        ],
+        [
+            ((slope**2 + 1) * x_F + np.sqrt(slope**2 + 1) * arrow_width) / (slope**2 + 1),
+            ((np.sqrt(slope**2 + 1) * arrow_width * slope + (slope**2 + 1) * y_F) / (slope**2 + 1)),
+        ],
     ]
 
 
-def _arrow_side_candidates(x_F, y_F, i_p, s, c):
-    """Coordinates of the lateral arrow head points C/D at perpendicular offset c."""
+def _arrow_side_candidates(x_F, y_F, intercept, slope, arrow_width):
+    """Coordinates of the lateral arrow-head points."""
     root = np.sqrt(
-        -s**2 * y_F**2
-        + (c**2 - i_p**2) * s**2
-        + 2 * i_p * s * x_F
-        + c**2
+        -slope**2 * y_F**2
+        + (arrow_width**2 - intercept**2) * slope**2
+        + 2 * intercept * slope * x_F
+        + arrow_width**2
         - x_F**2
-        + 2 * (i_p * s**2 - s * x_F) * y_F
+        + 2 * (intercept * slope**2 - slope * x_F) * y_F
     )
     return [
         [
-            (s**2 * x_F + i_p * s - s * y_F - root * s) / (s**2 + 1),
-            (i_p * s**2 - s * x_F + y_F + root) / (s**2 + 1),
+            (slope**2 * x_F + intercept * slope - slope * y_F - root * slope) / (slope**2 + 1),
+            (intercept * slope**2 - slope * x_F + y_F + root) / (slope**2 + 1),
         ],
         [
-            (s**2 * x_F + i_p * s - s * y_F + root * s) / (s**2 + 1),
-            (i_p * s**2 - s * x_F + y_F - root) / (s**2 + 1),
+            (slope**2 * x_F + intercept * slope - slope * y_F + root * slope) / (slope**2 + 1),
+            (intercept * slope**2 - slope * x_F + y_F - root) / (slope**2 + 1),
         ],
     ]
 
 
 def _draw_arrow_2d(start_point, end_point, fig, ax, arrow_size, arrow_width, arrow_color, zorder):
-    """Creates a polygon defined by the shape of the arrow"""
-    cf=arrow_width
-    af=arrow_size
-    x0= start_point
-    xA= end_point
-    xB= [0, 0]
-    xF= [0, 0]
-    if(x0[0]==xA[0]):
+    """Draw the original custom 2D polygon arrow."""
+    x0 = start_point
+    xA = end_point
+    xB = [0, 0]
+    xF = [0, 0]
+    if x0[0] == xA[0]:
         xB[0] = xA[0]
         xF[0] = xA[0]
-        if(x0[1]>=xA[1]):
-            xF[1]=af+xA[1]
-            xB[1]=-cf+xF[1]
+        if x0[1] >= xA[1]:
+            xF[1] = arrow_size + xA[1]
+            xB[1] = -arrow_width + xF[1]
         else:
-            xF[1]=-af+xA[1]
-            xB[1]=cf+xF[1]
-        xC = [xF[0]-cf,xF[1]]
-        xD = [xF[0]+cf,xF[1]]
-    elif(x0[1]==xA[1]):
-        xF[1]=xA[1]
-        xB[1]=xA[1]
-        if(x0[0]>=xA[0]):
-            xF[0]=af+xA[0]
-            xB[0]=-cf+xF[0]
+            xF[1] = -arrow_size + xA[1]
+            xB[1] = arrow_width + xF[1]
+        xC = [xF[0] - arrow_width, xF[1]]
+        xD = [xF[0] + arrow_width, xF[1]]
+    elif x0[1] == xA[1]:
+        xF[1] = xA[1]
+        xB[1] = xA[1]
+        if x0[0] >= xA[0]:
+            xF[0] = arrow_size + xA[0]
+            xB[0] = -arrow_width + xF[0]
         else:
-            xF[0]=-af+xA[0]
-            xB[0]=cf+xF[0]
-        xC = [xF[0],xF[1]-cf]
-        xD = [xF[0],xF[1]+cf]
-    elif(xA[0]>x0[0]):
-        sf = (xA[1]-x0[1])/(xA[0]-x0[0])
-        xF = [_arrow_tip_candidates(xA[0], xA[1], sf, af)[0][0], _arrow_tip_candidates(xA[0], xA[1], sf, af)[0][1]]
-        xB = [_arrow_base_candidates(xF[0], xF[1], sf, cf)[1][0], _arrow_base_candidates(xF[0], xF[1], sf, cf)[1][1]]
-        xC = [_arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], _arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
-        xD = [_arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], _arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
-    elif(xA[0]<x0[0]):
-        sf = (xA[1]-x0[1])/(xA[0]-x0[0])
-        xF = [_arrow_tip_candidates(xA[0], xA[1], sf, af)[1][0], _arrow_tip_candidates(xA[0], xA[1], sf, af)[1][1]]
-        xB = [_arrow_base_candidates(xF[0], xF[1], sf, cf)[0][0], _arrow_base_candidates(xF[0], xF[1], sf, cf)[0][1]]
-        xC = [_arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][0], _arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[0][1]]
-        xD = [_arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][0], _arrow_side_candidates(xF[0], xF[1], (1/sf)*xF[0]+xF[1], sf, cf)[1][1]]
-    xs = [x0[0], xA[0]]
-    ys = [x0[1], xA[1]]
-    arrLine = plt.plot(xs, ys, color=arrow_color, zorder=zorder, clip_on=False)
-    arrow = [xA, xC, xB, xD]
-    verts = []
-    patches = []
-    for pt in arrow:
-        verts.append([pt[0], pt[1]])
-    arrHead = Polygon(verts)
-    patches.append(arrHead)
-    p = PatchCollection(patches, facecolor=arrow_color, edgecolor=arrow_color, alpha=1, zorder=zorder)
-    ax.add_collection(p)
-    return arrLine+[arrHead]
+            xF[0] = -arrow_size + xA[0]
+            xB[0] = arrow_width + xF[0]
+        xC = [xF[0], xF[1] - arrow_width]
+        xD = [xF[0], xF[1] + arrow_width]
+    elif xA[0] > x0[0]:
+        slope = (xA[1] - x0[1]) / (xA[0] - x0[0])
+        xF = _arrow_tip_candidates(xA[0], xA[1], slope, arrow_size)[0]
+        xB = _arrow_base_candidates(xF[0], xF[1], slope, arrow_width)[1]
+        intercept = (1 / slope) * xF[0] + xF[1]
+        xC, xD = _arrow_side_candidates(xF[0], xF[1], intercept, slope, arrow_width)
+    elif xA[0] < x0[0]:
+        slope = (xA[1] - x0[1]) / (xA[0] - x0[0])
+        xF = _arrow_tip_candidates(xA[0], xA[1], slope, arrow_size)[1]
+        xB = _arrow_base_candidates(xF[0], xF[1], slope, arrow_width)[0]
+        intercept = (1 / slope) * xF[0] + xF[1]
+        xC, xD = _arrow_side_candidates(xF[0], xF[1], intercept, slope, arrow_width)
+    else:
+        return []
+
+    shaft = ax.plot(
+        [x0[0], xA[0]],
+        [x0[1], xA[1]],
+        color=arrow_color,
+        zorder=zorder,
+        clip_on=False,
+    )
+    head = Polygon([xA, xC, xB, xD])
+    patch = PatchCollection(
+        [head],
+        facecolor=arrow_color,
+        edgecolor=arrow_color,
+        alpha=1,
+        zorder=zorder,
+    )
+    ax.add_collection(patch)
+    return shaft + [head]
 
 
 def _draw_arrow_3d(start_point, end_point, fig, ax, arrow_size, arrow_width, arrow_color, zorder):
-    """Creates arrow with the default quiver3d from matplotlib"""
-    u = end_point[0] - start_point[0]
-    v = end_point[1] - start_point[1]
-    w = end_point[2] - start_point[2]
-    quiv = ax.quiver(
-        start_point[0],
-        start_point[1],
-        start_point[2],
-        u,
-        v,
-        w,
-        length=0.002,
-        arrow_length_ratio=15,
-        pivot='tip',
+    """Draw a 3D cone aligned with the local trajectory direction."""
+    if arrow_size <= 0 or arrow_width <= 0:
+        return []
+
+    start = np.asarray(start_point, dtype=float)
+    tip = np.asarray(end_point, dtype=float)
+    direction = tip - start
+    norm = np.linalg.norm(direction)
+    if norm <= 1e-12:
+        return []
+
+    unit_direction = direction / norm
+    cone_base = tip - arrow_size * unit_direction
+
+    shaft = ax.plot(
+        [start[0], cone_base[0]],
+        [start[1], cone_base[1]],
+        [start[2], cone_base[2]],
         color=arrow_color,
         zorder=zorder,
-        normalize=True,
     )
-    return [quiv]
+
+    basis_1, basis_2 = _orthonormal_basis_perpendicular_to(unit_direction)
+    theta = np.linspace(0, 2 * np.pi, 18)
+    height = np.linspace(0, arrow_size, 8)
+    theta_grid, height_grid = np.meshgrid(theta, height)
+    radius_grid = arrow_width * (height_grid / arrow_size)
+
+    cone = (
+        tip
+        - height_grid[..., None] * unit_direction
+        + radius_grid[..., None]
+        * (
+            np.cos(theta_grid)[..., None] * basis_1
+            + np.sin(theta_grid)[..., None] * basis_2
+        )
+    )
+    surface = ax.plot_surface(
+        cone[..., 0],
+        cone[..., 1],
+        cone[..., 2],
+        color=arrow_color,
+        alpha=1,
+        linewidth=0,
+        shade=True,
+        zorder=zorder,
+    )
+    return shaft + [surface]
 
 
-def _is_three_player_cube(payoff_data):
-    return isinstance(payoff_data, (tuple, list)) and hasattr(payoff_data[0], "ndim") and payoff_data[0].ndim == 3
+def _orthonormal_basis_perpendicular_to(vector):
+    """Return two perpendicular unit vectors spanning the plane normal to vector."""
+    reference = np.array([0.0, 0.0, 1.0])
+    if abs(np.dot(vector, reference)) > 0.95:
+        reference = np.array([0.0, 1.0, 0.0])
 
+    basis_1 = np.cross(vector, reference)
+    basis_1 = basis_1 / np.linalg.norm(basis_1)
+    basis_2 = np.cross(vector, basis_1)
+    basis_2 = basis_2 / np.linalg.norm(basis_2)
+    return basis_1, basis_2
 
 
 def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
-    """Draws the simplex frame."""
-    if payoff_data[0].shape == (3,):
-        pt1 = p_to_sim(1, 0)
-        pt2 = p_to_sim(0, 1)
-        pt3 = p_to_sim(0, 0)
-        lbl1 = ax.annotate(strategy_labels[0], (pt1[0] - 0.01, pt1[1] + 0.04), fontsize=font_size, zorder=zorder)
-        lbl2 = ax.annotate(strategy_labels[1], (pt2[0] - 0.05, pt2[1] - 0.01), fontsize=font_size, zorder=zorder)
-        lbl3 = ax.annotate(strategy_labels[2], (pt3[0] + 0.03, pt3[1] - 0.01), fontsize=font_size, zorder=zorder)
-        xs = ([pt1[0], pt2[0]], [pt1[0], pt3[0]], [pt2[0], pt3[0]])
-        ys = ([pt1[1], pt2[1]], [pt1[1], pt3[1]], [pt2[1], pt3[1]])
+    """Draw the state-space frame for a supported game.
+
+    Parameters
+    ----------
+    strategy_labels : sequence of str
+        Labels shown on simplex vertices or cube axes.
+    payoff_data : numpy.ndarray or tuple of numpy.ndarray
+        Payoff representation used to infer the game class.
+    ax : matplotlib axes
+        Axes on which the state space is drawn. Must be a 3D axes for 2P4S and
+        3P2S games.
+    font_size : float
+        Font size for labels.
+    zorder : float
+        Drawing order of the state-space frame.
+
+    Returns
+    -------
+    list
+        Matplotlib artists created by the function.
+    """
+    game_class = infer_game_class(payoff_data)
+    if game_class == "2P3S":
+        strategy_1_vertex = simplex_to_plane_2p3s(1, 0)
+        strategy_2_vertex = simplex_to_plane_2p3s(0, 1)
+        strategy_3_vertex = simplex_to_plane_2p3s(0, 0)
+        strategy_1_label = ax.annotate(strategy_labels[0], (strategy_1_vertex[0] - 0.01, strategy_1_vertex[1] + 0.04), fontsize=font_size, zorder=zorder)
+        strategy_2_label = ax.annotate(strategy_labels[1], (strategy_2_vertex[0] - 0.05, strategy_2_vertex[1] - 0.06), fontsize=font_size, zorder=zorder)
+        strategy_3_label = ax.annotate(strategy_labels[2], (strategy_3_vertex[0] + 0.03, strategy_3_vertex[1] - 0.06), fontsize=font_size, zorder=zorder)
+        edge_endpoints = (
+            (strategy_1_vertex, strategy_2_vertex),
+            (strategy_1_vertex, strategy_3_vertex),
+            (strategy_2_vertex, strategy_3_vertex),
+        )
         lines = []
-        for xpair, ypair in zip(xs, ys):
-            lines += plt.plot(xpair, ypair, color='black', zorder=zorder, alpha=1, clip_on=False)
+        for start, end in edge_endpoints:
+            lines += ax.plot(
+                [start[0], end[0]],
+                [start[1], end[1]],
+                color='black',
+                zorder=zorder,
+                alpha=1,
+                clip_on=False,
+            )
         ax.set_xlim(-0.05, 1.05)
-        ax.set_ylim(-0.05, (3 ** 0.5) / 2 + 0.05)
+        ax.set_ylim(-0.10, (3 ** 0.5) / 2 + 0.05)
         ax.set_aspect('equal', adjustable='box')
-        return lines + [lbl1, lbl2, lbl3]
-    if payoff_data[0].shape == (2, 2):
+        return lines + [strategy_1_label, strategy_2_label, strategy_3_label]
+    if game_class == "2P2S":
         ax.set_xlabel(strategy_labels[0], fontsize=font_size)
         ax.set_ylabel(strategy_labels[1], fontsize=font_size)
         edges = [([0, 1], [0, 0]), ([1, 1], [0, 1]), ([1, 0], [1, 1]), ([0, 0], [1, 0])]
@@ -254,7 +335,7 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
         for xs, ys in edges:
             lines += plt.plot(xs, ys, color='black', zorder=zorder, alpha=1, clip_on=False)
         return lines
-    if _is_three_player_cube(payoff_data):
+    if game_class == "3P2S":
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_zlim(0, 1)
@@ -293,23 +374,36 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
             e = corners[end_idx]
             artists += ax.plot([s[0], e[0]], [s[1], e[1]], [s[2], e[2]], color='black', zorder=zorder, alpha=1)
         return artists
-    if payoff_data[0].shape == (4,):
-        pt1 = sim_to_p_2p4s(1, 0, 0)
-        pt2 = sim_to_p_2p4s(0, 1, 0)
-        pt3 = sim_to_p_2p4s(0, 0, 1)
-        pt4 = sim_to_p_2p4s(0, 0, 0)
+    if game_class == "2P4S":
+        strategy_1_vertex = simplex_to_plane_2p4s(1, 0, 0)
+        strategy_2_vertex = simplex_to_plane_2p4s(0, 1, 0)
+        strategy_3_vertex = simplex_to_plane_2p4s(0, 0, 1)
+        strategy_4_vertex = simplex_to_plane_2p4s(0, 0, 0)
         ax.grid(False)
-        lbl1 = ax.text(pt1[0], pt1[1] + 0.05, pt1[2], strategy_labels[0], fontsize=font_size, zorder=zorder)
-        lbl2 = ax.text(pt2[0] - 0.05, pt2[1], pt2[2], strategy_labels[1], fontsize=font_size, zorder=zorder)
-        lbl3 = ax.text(pt3[0] + 0.05, pt3[1] - 0.022, pt3[2], strategy_labels[2], fontsize=font_size, zorder=zorder)
-        lbl4 = ax.text(pt4[0] - 0.02, pt4[1] - 0.022, pt4[2] + 0.05, strategy_labels[3], fontsize=font_size, zorder=zorder)
-        xs = [[pt1[0], pt2[0]], [pt2[0], pt3[0]], [pt3[0], pt1[0]], [pt4[0], pt1[0]], [pt4[0], pt2[0]], [pt4[0], pt3[0]]]
-        ys = [[pt1[1], pt2[1]], [pt2[1], pt3[1]], [pt3[1], pt1[1]], [pt4[1], pt1[1]], [pt4[1], pt2[1]], [pt4[1], pt3[1]]]
-        zs = [[pt1[2], pt2[2]], [pt2[2], pt3[2]], [pt3[2], pt1[2]], [pt4[2], pt1[2]], [pt4[2], pt2[2]], [pt4[2], pt3[2]]]
+        strategy_1_label = ax.text(strategy_1_vertex[0], strategy_1_vertex[1] + 0.05, strategy_1_vertex[2], strategy_labels[0], fontsize=font_size, zorder=zorder)
+        strategy_2_label = ax.text(strategy_2_vertex[0] - 0.05, strategy_2_vertex[1], strategy_2_vertex[2], strategy_labels[1], fontsize=font_size, zorder=zorder)
+        strategy_3_label = ax.text(strategy_3_vertex[0] + 0.05, strategy_3_vertex[1] - 0.022, strategy_3_vertex[2], strategy_labels[2], fontsize=font_size, zorder=zorder)
+        strategy_4_label = ax.text(strategy_4_vertex[0] - 0.02, strategy_4_vertex[1] - 0.022, strategy_4_vertex[2] + 0.05, strategy_labels[3], fontsize=font_size, zorder=zorder)
+        edge_endpoints = (
+            (strategy_1_vertex, strategy_2_vertex),
+            (strategy_2_vertex, strategy_3_vertex),
+            (strategy_3_vertex, strategy_1_vertex),
+            (strategy_4_vertex, strategy_1_vertex),
+            (strategy_4_vertex, strategy_2_vertex),
+            (strategy_4_vertex, strategy_3_vertex),
+        )
         lines = []
-        for xpair, ypair, zpair in zip(xs, ys, zs):
-            lines += plt.plot(xpair, ypair, zpair, color='black', zorder=zorder, alpha=1, clip_on=False)
-        return lines + [lbl1, lbl2, lbl3, lbl4]
+        for start, end in edge_endpoints:
+            lines += ax.plot(
+                [start[0], end[0]],
+                [start[1], end[1]],
+                [start[2], end[2]],
+                color='black',
+                zorder=zorder,
+                alpha=1,
+                clip_on=False,
+            )
+        return lines + [strategy_1_label, strategy_2_label, strategy_3_label, strategy_4_label]
     return []
 
 
@@ -327,35 +421,80 @@ def plot_trajectory(
     zorder,
     arrow_color=None,
 ):
-    """Draws trajectories in the simplex, given a starting point."""
+    """Draw forward and backward trajectories from one initial state.
+
+    Parameters
+    ----------
+    initial_state : sequence of float
+        Initial condition. For 2P2S and 3P2S games, entries are probabilities
+        of the first listed strategy for each player. For 2P3S and 2P4S games,
+        entries are reduced simplex coordinates.
+    payoff_data : numpy.ndarray or tuple of numpy.ndarray
+        Payoff representation used to infer the game class and compute the
+        replicator dynamics.
+    time_step : float
+        Time step used for numerical integration.
+    arrow_positions : sequence of float
+        Fractions of the sampled forward trajectory where direction markers are
+        drawn. Use an empty list to omit arrows.
+    tmax : float
+        Time horizon for both forward and backward integration.
+    fig : matplotlib.figure.Figure
+        Figure containing the plot.
+    ax : matplotlib axes
+        Axes on which trajectories are drawn.
+    trajectory_color : matplotlib color
+        Color of the trajectory lines.
+    arrow_size : float
+        Size of trajectory direction markers.
+    arrow_width : float
+        Width of 2D arrow heads or radius of 3D cone markers.
+    zorder : float
+        Drawing order of trajectories and direction markers.
+    arrow_color : matplotlib color, optional
+        Color of direction markers. If None, `trajectory_color` is used.
+
+    Returns
+    -------
+    list or None
+        Matplotlib artists created by the function, or None if the game class is
+        unsupported.
+    """
     t = np.linspace(0, tmax, int(tmax / time_step))
     line_color = trajectory_color if trajectory_color is not None else 'black'
     arrow_col = arrow_color if arrow_color is not None else line_color
+    game_class = infer_game_class(payoff_data)
 
-    if payoff_data[0].shape == (3,):  # symmetric 2P3S
+    if game_class == "2P3S":
         x0, y0 = initial_state
-        sol = odeint(dynamics.replicator_2p3s, [x0, y0], t, (payoff_data,))
-        solRev = odeint(dynamics.reverse_replicator_2p3s, [x0, y0], t, (payoff_data,))
-        solX = []
-        solY = []
-        solXrev = []
-        solYrev = []
-        for pt in sol:
-            cPt = p_to_sim(pt[0], pt[1])
-            solX.append(cPt[0])
-            solY.append(cPt[1])
-        for pt in solRev:
-            cPt = p_to_sim(pt[0], pt[1])
-            solXrev.append(cPt[0])
-            solYrev.append(cPt[1])
-        psol = plt.plot(solX, solY, color=line_color, zorder=zorder, clip_on=False)
-        psolRev = plt.plot(solXrev, solYrev, color=line_color, zorder=zorder, clip_on=False)
-        dirs = []
+        forward_solution = odeint(dynamics.replicator_2p3s, [x0, y0], t, (payoff_data,))
+        backward_solution = odeint(dynamics.reverse_replicator_2p3s, [x0, y0], t, (payoff_data,))
+        forward_path = np.asarray(
+            [simplex_to_plane_2p3s(point[0], point[1]) for point in forward_solution]
+        )
+        backward_path = np.asarray(
+            [simplex_to_plane_2p3s(point[0], point[1]) for point in backward_solution]
+        )
+        forward_line = ax.plot(
+            forward_path[:, 0],
+            forward_path[:, 1],
+            color=line_color,
+            zorder=zorder,
+            clip_on=False,
+        )
+        backward_line = ax.plot(
+            backward_path[:, 0],
+            backward_path[:, 1],
+            color=line_color,
+            zorder=zorder,
+            clip_on=False,
+        )
+        arrow_artists = []
         for frac in arrow_positions:
-            base = min(max(int(frac * (len(solX) - 1)), 0), len(solX) - 2)
-            dirs += _draw_arrow_2d(
-                [solX[base], solY[base]],
-                [solX[base + 1], solY[base + 1]],
+            base = min(max(int(frac * (len(forward_path) - 1)), 0), len(forward_path) - 2)
+            arrow_artists += _draw_arrow_2d(
+                forward_path[base],
+                forward_path[base + 1],
                 fig,
                 ax,
                 arrow_width=arrow_width,
@@ -363,22 +502,32 @@ def plot_trajectory(
                 arrow_color=arrow_col,
                 zorder=zorder,
             )
-        return psol + psolRev + dirs
+        return forward_line + backward_line + arrow_artists
 
-    if payoff_data[0].shape == (2, 2):  # asymmetric 2P2S
+    if game_class == "2P2S":
         x0, y0 = initial_state
-        sol = odeint(dynamics.replicator_2p2s, [x0, y0], t, (payoff_data,))
-        solRev = odeint(dynamics.reverse_replicator_2p2s, [x0, y0], t, (payoff_data,))
-        solX, solY = sol[:, 0], sol[:, 1]
-        solXrev, solYrev = solRev[:, 0], solRev[:, 1]
-        psol = plt.plot(solX, solY, color=line_color, zorder=zorder, clip_on=False)
-        psolRev = plt.plot(solXrev, solYrev, color=line_color, zorder=zorder, clip_on=False)
-        dirs = []
+        forward_solution = odeint(dynamics.replicator_2p2s, [x0, y0], t, (payoff_data,))
+        backward_solution = odeint(dynamics.reverse_replicator_2p2s, [x0, y0], t, (payoff_data,))
+        forward_line = ax.plot(
+            forward_solution[:, 0],
+            forward_solution[:, 1],
+            color=line_color,
+            zorder=zorder,
+            clip_on=False,
+        )
+        backward_line = ax.plot(
+            backward_solution[:, 0],
+            backward_solution[:, 1],
+            color=line_color,
+            zorder=zorder,
+            clip_on=False,
+        )
+        arrow_artists = []
         for frac in arrow_positions:
-            base = min(max(int(frac * (len(solX) - 1)), 0), len(solX) - 2)
-            dirs += _draw_arrow_2d(
-                [solX[base], solY[base]],
-                [solX[base + 1], solY[base + 1]],
+            base = min(max(int(frac * (len(forward_solution) - 1)), 0), len(forward_solution) - 2)
+            arrow_artists += _draw_arrow_2d(
+                forward_solution[base],
+                forward_solution[base + 1],
                 fig,
                 ax,
                 arrow_width=arrow_width,
@@ -386,22 +535,34 @@ def plot_trajectory(
                 arrow_color=arrow_col,
                 zorder=zorder,
             )
-        return psol + psolRev + dirs
+        return forward_line + backward_line + arrow_artists
 
-    if _is_three_player_cube(payoff_data):
+    if game_class == "3P2S":
         x0, y0, z0 = initial_state
-        sol = odeint(dynamics.replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
-        solRev = odeint(dynamics.reverse_replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
-        solX, solY, solZ = sol[:, 0], sol[:, 1], sol[:, 2]
-        solXrev, solYrev, solZrev = solRev[:, 0], solRev[:, 1], solRev[:, 2]
-        psol = ax.plot(solX, solY, solZ, linewidth=0.8, color=line_color, zorder=zorder)
-        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth=0.8, color=line_color, zorder=zorder)
-        dirs = []
+        forward_solution = odeint(dynamics.replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
+        backward_solution = odeint(dynamics.reverse_replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
+        forward_line = ax.plot(
+            forward_solution[:, 0],
+            forward_solution[:, 1],
+            forward_solution[:, 2],
+            linewidth=0.8,
+            color=line_color,
+            zorder=zorder,
+        )
+        backward_line = ax.plot(
+            backward_solution[:, 0],
+            backward_solution[:, 1],
+            backward_solution[:, 2],
+            linewidth=0.8,
+            color=line_color,
+            zorder=zorder,
+        )
+        arrow_artists = []
         for frac in arrow_positions:
-            base = min(max(int(frac * (len(solX) - 1)), 0), len(solX) - 2)
-            dirs += _draw_arrow_3d(
-                [solX[base], solY[base], solZ[base]],
-                [solX[base + 1], solY[base + 1], solZ[base + 1]],
+            base = min(max(int(frac * (len(forward_solution) - 1)), 0), len(forward_solution) - 2)
+            arrow_artists += _draw_arrow_3d(
+                forward_solution[base],
+                forward_solution[base + 1],
                 fig,
                 ax,
                 arrow_width=arrow_width,
@@ -409,32 +570,40 @@ def plot_trajectory(
                 arrow_color=arrow_col,
                 zorder=zorder,
             )
-        return psol + psolRev + dirs
+        return forward_line + backward_line + arrow_artists
 
-    if payoff_data[0].shape == (4,):
+    if game_class == "2P4S":
         x0, y0, z0 = initial_state
-        sol = odeint(dynamics.replicator_2p4s, [x0, y0, z0], t, (payoff_data,))
-        solRev = odeint(dynamics.reverse_replicator_2p4s, [x0, y0, z0], t, (payoff_data,))
-        solX, solY, solZ = [], [], []
-        solXrev, solYrev, solZrev = [], [], []
-        for pt in sol:
-            cPt = sim_to_p_2p4s(pt[0], pt[1], pt[2])
-            solX.append(cPt[0])
-            solY.append(cPt[1])
-            solZ.append(cPt[2])
-        for pt in solRev:
-            cPt = sim_to_p_2p4s(pt[0], pt[1], pt[2])
-            solXrev.append(cPt[0])
-            solYrev.append(cPt[1])
-            solZrev.append(cPt[2])
-        psol = ax.plot(solX, solY, solZ, linewidth=0.8, color=line_color, zorder=zorder)
-        psolRev = ax.plot(solXrev, solYrev, solZrev, linewidth=0.8, color=line_color, zorder=zorder)
-        dirs = []
+        forward_solution = odeint(dynamics.replicator_2p4s, [x0, y0, z0], t, (payoff_data,))
+        backward_solution = odeint(dynamics.reverse_replicator_2p4s, [x0, y0, z0], t, (payoff_data,))
+        forward_path = np.asarray(
+            [simplex_to_plane_2p4s(point[0], point[1], point[2]) for point in forward_solution]
+        )
+        backward_path = np.asarray(
+            [simplex_to_plane_2p4s(point[0], point[1], point[2]) for point in backward_solution]
+        )
+        forward_line = ax.plot(
+            forward_path[:, 0],
+            forward_path[:, 1],
+            forward_path[:, 2],
+            linewidth=0.8,
+            color=line_color,
+            zorder=zorder,
+        )
+        backward_line = ax.plot(
+            backward_path[:, 0],
+            backward_path[:, 1],
+            backward_path[:, 2],
+            linewidth=0.8,
+            color=line_color,
+            zorder=zorder,
+        )
+        arrow_artists = []
         for frac in arrow_positions:
-            base = min(max(int(frac * (len(solX) - 1)), 0), len(solX) - 2)
-            dirs += _draw_arrow_3d(
-                [solX[base], solY[base], solZ[base]],
-                [solX[base + 1], solY[base + 1], solZ[base + 1]],
+            base = min(max(int(frac * (len(forward_path) - 1)), 0), len(forward_path) - 2)
+            arrow_artists += _draw_arrow_3d(
+                forward_path[base],
+                forward_path[base + 1],
                 fig,
                 ax,
                 arrow_width=arrow_width,
@@ -442,7 +611,7 @@ def plot_trajectory(
                 arrow_color=arrow_col,
                 zorder=zorder,
             )
-        return psol + psolRev + dirs
+        return forward_line + backward_line + arrow_artists
 
     return None
 
@@ -457,39 +626,66 @@ def plot_equilibria(
     zorder,
     center_color=None,
 ):
-    """Classify and plot equilibria for the given game/payoff_data."""
+    """Classify and plot isolated equilibria.
+
+    Parameters
+    ----------
+    payoff_data : numpy.ndarray or tuple of numpy.ndarray
+        Payoff representation of a supported game.
+    ax : matplotlib axes
+        Axes on which equilibrium markers are drawn.
+    sink_color, saddle_color, source_color : matplotlib color
+        Marker colors for sink, saddle, and source equilibria. Equilibria
+        classified as "unstable" are drawn with `source_color`.
+    equilibrium_size : float
+        Marker size in 2D. In 3D, this controls sphere radius indirectly.
+    zorder : float
+        Drawing order of equilibrium markers.
+    center_color : matplotlib color or None, optional
+        Marker color for centers. If None, centers use `source_color`.
+
+    Returns
+    -------
+    list
+        Five lists of equilibrium positions grouped as source, saddle, sink,
+        center, and undetermined.
+
+    Warns
+    -----
+    PlottingWarning
+        Raised when "unstable" equilibria are drawn with the source color.
+    """
     source, sink, saddle, center, undetermined = [], [], [], [], []
-    three_player = _is_three_player_cube(payoff_data)
     center_color = source_color if center_color is None else center_color
 
     result = analysis.analyze_equilibria(payoff_data)
     unstable_plotted_as_source = False
 
-    def _point_to_plot(record):
+    def _point_to_plot(equilibrium):
         if result.game_class == "2P3S":
-            return np.array(p_to_sim(record.reduced_position[0], record.reduced_position[1]))
+            return np.array(simplex_to_plane_2p3s(equilibrium.reduced_position[0], equilibrium.reduced_position[1]))
         if result.game_class == "2P4S":
             return np.array(
-                sim_to_p_2p4s(
-                    record.reduced_position[0],
-                    record.reduced_position[1],
-                    record.reduced_position[2],
+                simplex_to_plane_2p4s(
+                    equilibrium.reduced_position[0],
+                    equilibrium.reduced_position[1],
+                    equilibrium.reduced_position[2],
                 )
             )
-        return np.asarray(record.full_position, dtype=float)
+        return np.asarray(equilibrium.full_position, dtype=float)
 
-    for record in result.records:
-        point_to_plot = _point_to_plot(record)
-        if record.stability == 'sink':
+    for equilibrium in result.equilibria:
+        point_to_plot = _point_to_plot(equilibrium)
+        if equilibrium.stability == 'sink':
             sink.append(point_to_plot)
-        elif record.stability == 'source':
+        elif equilibrium.stability == 'source':
             source.append(point_to_plot)
-        elif record.stability == 'unstable':
+        elif equilibrium.stability == 'unstable':
             source.append(point_to_plot)
             unstable_plotted_as_source = True
-        elif record.stability == 'saddle':
+        elif equilibrium.stability == 'saddle':
             saddle.append(point_to_plot)
-        elif record.stability == 'center':
+        elif equilibrium.stability == 'center':
             center.append(point_to_plot)
         else:
             undetermined.append(point_to_plot)
@@ -506,11 +702,11 @@ def plot_equilibria(
 
     def _to_raw(point):
         if result.game_class == "2P3S":
-            r, p = sim_to_p(point[0], point[1])
+            r, p = plane_to_simplex_2p3s(point[0], point[1])
             return [r, p, 1 - r - p]
         if result.game_class == "2P2S":
             return point.tolist()
-        if three_player or result.game_class == "2P4S":
+        if result.game_class in ("3P2S", "2P4S"):
             return point.tolist()
         return point.tolist()
 
@@ -548,7 +744,7 @@ def plot_equilibria(
         if not points:
             return
         pts = np.array(points)
-        if three_player or payoff_data[0].shape == (4,):
+        if result.game_class in ("3P2S", "2P4S"):
             _plot_spheres(pts, color)
         else:
             ax.scatter(
@@ -566,7 +762,7 @@ def plot_equilibria(
         if not points:
             return
         pts = np.array(points)
-        if three_player or payoff_data[0].shape == (4,):
+        if result.game_class in ("3P2S", "2P4S"):
             _plot_spheres(pts, 'gray', alpha=0.45)
         else:
             ax.scatter(
@@ -606,7 +802,38 @@ def plot_vector_field(
     zorder=15,
     normalize=True,
 ):
-    """Plot a sparse vector field for supported games."""
+    """Plot a sparse vector field for a supported game.
+
+    Parameters
+    ----------
+    payoff_data : numpy.ndarray or tuple of numpy.ndarray
+        Payoff representation of a supported game.
+    ax : matplotlib axes
+        Axes on which the vector field is drawn.
+    grid : int, default=15
+        Grid density used to sample the state space.
+    margin : float, default=0.02
+        Distance from the boundary used when sampling vector-field points.
+    color : matplotlib color, default="black"
+        Color of vector-field arrows.
+    alpha : float, default=0.75
+        Transparency of vector-field arrows.
+    length : float, default=0.04
+        Arrow length when vectors are normalized.
+    width : float, default=0.003
+        Width of 2D arrows. Matplotlib's 3D quiver does not use this parameter
+        in the same way.
+    zorder : float, default=15
+        Drawing order of vector-field arrows.
+    normalize : bool, default=True
+        If True, arrows show direction only. If False, arrow lengths reflect
+        vector-field magnitude.
+
+    Returns
+    -------
+    matplotlib artist or None
+        Quiver artist, or None if no nonzero vectors are available.
+    """
     game_class = infer_game_class(payoff_data)
 
     if game_class == "2P2S":
@@ -673,14 +900,150 @@ def plot_game(
     equilibrium_size=DEFAULT_PLOT_STYLE["equilibrium_size"],
     equilibrium_zorder=DEFAULT_PLOT_STYLE["equilibrium_zorder"],
 ):
-    """Plot a supported game with simplex/cube, trajectories, and equilibria.
+    """Plot replicator dynamics for a supported game.
 
-    This is the high-level plotting entry point. The lower-level functions
-    remain available for users who need full manual control.
+    This is the main plotting interface of pyNamo. It draws the appropriate
+    state space for the game class and can optionally add a speed field, vector
+    field, trajectories, and equilibria.
+
+    Parameters
+    ----------
+    game : game.Game
+        Game object to plot. The game class is inferred from the payoff data.
+        Supported classes are "2P2S", "2P3S", "2P4S", and "3P2S".
+    fig : matplotlib.figure.Figure, optional
+        Existing Matplotlib figure. If None, a new figure is created.
+    ax : matplotlib.axes.Axes, optional
+        Existing Matplotlib axes. If None, new axes are created. A 3D axis is
+        created automatically for 2P4S and 3P2S games.
+    figsize : tuple, default=(6, 6)
+        Size of the figure when a new figure is created.
+    view_elev : float, default=25
+        Elevation angle for 3D plots. Ignored for 2D plots.
+    view_azim : float, default=35
+        Azimuth angle for 3D plots. Ignored for 2D plots.
+    xlabel, ylabel, zlabel : str or None, optional
+        Axis-label overrides. If None, pyNamo uses labels derived from the game.
+        `zlabel` is ignored for 2D plots.
+    starts : list of list of float, optional
+        Initial conditions for trajectories. If None, four random initial
+        conditions are generated.
+
+        For 2P2S games, each start is [x, y], where x is the probability that
+        player 1 uses their first listed strategy and y is the probability that
+        player 2 uses their first listed strategy.
+
+        For 3P2S games, each start is [x, y, z], where each coordinate is the
+        probability that the corresponding player uses their first listed
+        strategy.
+
+        For 2P3S games, each start is [x1, x2], the first two coordinates of
+        the population state. The third coordinate is 1 - x1 - x2.
+
+        For 2P4S games, each start is [x1, x2, x3], the first three coordinates
+        of the population state. The fourth coordinate is 1 - x1 - x2 - x3.
+    random_state : int or None, optional
+        Seed used when `starts` is None.
+    simplex_font_size : float, default=13
+        Font size for simplex or cube labels.
+    simplex_zorder : float, default=30
+        Drawing order of the state-space frame and labels.
+    show_speed : bool, default=True
+        Whether to draw the speed field. Speed fields are currently drawn only
+        for 2D state spaces: 2P2S and 2P3S.
+    speed_grid : int, default=60
+        Grid density used to compute the speed field.
+    speed_cmap : matplotlib colormap, default=plt.cm.Spectral
+        Colormap used for the speed field.
+    speed_levels : int, default=12
+        Number of contour levels in the speed field.
+    speed_zorder : float, default=10
+        Drawing order of the speed field.
+    show_vector_field : bool, default=False
+        Whether to draw a sparse vector field.
+    vector_grid : int, default=15
+        Grid density used to compute vector-field arrows.
+    vector_margin : float, default=0.02
+        Margin from the boundary when sampling vector-field points.
+    vector_color : matplotlib color, default="black"
+        Color of vector-field arrows.
+    vector_alpha : float, default=0.75
+        Transparency of vector-field arrows.
+    vector_length : float, default=0.04
+        Length scale for normalized vector-field arrows.
+    vector_width : float, default=0.003
+        Width of 2D vector-field arrows. Matplotlib's 3D quiver does not use
+        this parameter in the same way.
+    vector_zorder : float, default=15
+        Drawing order of vector-field arrows.
+    vector_normalize : bool, default=True
+        If True, vector-field arrows show direction only and are rescaled to a
+        common length. If False, arrow lengths reflect the magnitude of the
+        vector field.
+    show_trajectories : bool, default=True
+        Whether to draw trajectories.
+    trajectory_step : float, default=0.02
+        Time step used for numerical integration.
+    trajectory_arrows : list of float or None, optional
+        Positions at which to draw direction markers on forward trajectories.
+        Values are fractions of the sampled trajectory, between 0 and 1. Use an
+        empty list `[]` to draw trajectories without arrows. If None, the
+        default arrow positions are used.
+    tmax : float, default=45
+        Time horizon for trajectory integration. pyNamo integrates both forward
+        and backward trajectories from each initial condition.
+    trajectory_color : matplotlib color or list of colors, default="black"
+        Color of trajectories. A single color applies to all trajectories. A
+        list assigns one color per trajectory and must have the same length as
+        `starts`.
+    arrow_size : float, default=0.04
+        Size of trajectory direction markers. In 2D this controls the length of
+        the custom polygon arrow head. In 3D this controls the length of the
+        cone marker.
+    arrow_width : float, default=0.015
+        Width of trajectory direction markers. In 2D this controls the width of
+        the custom polygon arrow head. In 3D this controls the radius of the
+        cone marker.
+    trajectory_zorder : float, default=20
+        Drawing order of trajectories and their direction markers.
+    show_equilibria : bool, default=True
+        Whether to compute and draw isolated equilibria.
+    sink_color : matplotlib color, default="black"
+        Color used for sink equilibria.
+    saddle_color : matplotlib color, default="gray"
+        Color used for saddle equilibria.
+    source_color : matplotlib color, default="white"
+        Color used for source equilibria. Equilibria classified as "unstable"
+        are also drawn with this color.
+    center_color : matplotlib color or None, optional
+        Color used for centers. If None, centers use `source_color`.
+    equilibrium_size : float, default=80
+        Size of equilibrium markers. For 2D plots this is the scatter marker
+        size. For 3D plots this determines the radius of the equilibrium
+        spheres.
+    equilibrium_zorder : float, default=40
+        Drawing order of equilibrium markers.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure containing the plot.
+    ax : matplotlib.axes.Axes
+        Axes containing the plot. This is a 3D axes object for 2P4S and 3P2S
+        games.
+
+    Notes
+    -----
+    Equilibrium stability is computed from the linearization restricted to
+    admissible directions in the state space. Non-isolated equilibrium manifolds
+    are not plotted automatically. When stability cannot be classified
+    conclusively, pyNamo emits a warning rather than forcing a classification.
     """
     payoff_data = _payoff_data(game)
     game_class = infer_game_class(game)
     labels = _strategy_labels(game, game_class)
+    player_strategy_labels = _player_strategy_labels(game, game_class)
+    player_labels = _player_labels(game, game_class)
     title = getattr(game, "name", None)
     trajectory_arrows = (
         list(DEFAULT_PLOT_STYLE["trajectory_arrows"])
@@ -691,7 +1054,7 @@ def plot_game(
     fig, ax = _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim)
 
     draw_state_space(labels, payoff_data, ax, simplex_font_size, simplex_zorder)
-    _set_default_axes_style(ax, game_class, labels)
+    _set_default_axes_style(ax, game_class, labels, player_strategy_labels, player_labels)
     _apply_axis_label_overrides(ax, xlabel, ylabel, zlabel)
 
     if show_speed and game_class in ("2P2S", "2P3S"):
@@ -775,6 +1138,29 @@ def _strategy_labels(game, game_class):
     return ["Strategy 1", "Strategy 2", "Strategy 3"]
 
 
+def _player_strategy_labels(game, game_class):
+    labels = getattr(game, "player_strategy_labels", None)
+    if labels:
+        return labels
+    shared = _strategy_labels(game, game_class)
+    if game_class == "2P2S":
+        return [shared, shared]
+    if game_class == "3P2S":
+        return [[label] for label in shared]
+    return [shared]
+
+
+def _player_labels(game, game_class):
+    labels = getattr(game, "player_labels", None)
+    if labels:
+        return labels
+    if game_class == "2P2S":
+        return ["Population 1", "Population 2"]
+    if game_class == "3P2S":
+        return ["Population 1", "Population 2", "Population 3"]
+    return ["Population"]
+
+
 def _trajectory_colors(trajectory_color, count):
     if mcolors.is_color_like(trajectory_color):
         return [trajectory_color] * count
@@ -815,13 +1201,13 @@ def _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim):
     return fig, ax
 
 
-def _set_default_axes_style(ax, game_class, labels):
+def _set_default_axes_style(ax, game_class, labels, player_strategy_labels, player_labels):
     if game_class == "2P2S":
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_aspect("equal", adjustable="box")
-        ax.set_xlabel(f"Population 1: Pr({labels[0]})")
-        ax.set_ylabel(f"Population 2: Pr({labels[0]})")
+        ax.set_xlabel(f"{player_labels[0]}: Pr({player_strategy_labels[0][0]})")
+        ax.set_ylabel(f"{player_labels[1]}: Pr({player_strategy_labels[1][0]})")
     elif game_class == "2P3S":
         ax.axis("off")
     elif game_class == "2P4S":
@@ -864,8 +1250,8 @@ def _vector_field_2p3s(payoff_data, grid, margin):
     vectors = []
     for r, p, _ in bary_points:
         vector = np.asarray(dynamics.replicator_2p3s([r, p], 0, payoff_data), dtype=float)
-        start = np.asarray(p_to_sim(r, p), dtype=float)
-        end = np.asarray(p_to_sim(r + vector[0], p + vector[1]), dtype=float)
+        start = np.asarray(simplex_to_plane_2p3s(r, p), dtype=float)
+        end = np.asarray(simplex_to_plane_2p3s(r + vector[0], p + vector[1]), dtype=float)
         points.append(start)
         vectors.append(end - start)
     return np.asarray(points), np.asarray(vectors)
@@ -891,8 +1277,8 @@ def _vector_field_2p4s(payoff_data, grid, margin):
     vectors = []
     for a, b, c, _ in bary_points:
         vector = np.asarray(dynamics.replicator_2p4s([a, b, c], 0, payoff_data), dtype=float)
-        start = np.asarray(sim_to_p_2p4s(a, b, c), dtype=float)
-        end = np.asarray(sim_to_p_2p4s(a + vector[0], b + vector[1], c + vector[2]), dtype=float)
+        start = np.asarray(simplex_to_plane_2p4s(a, b, c), dtype=float)
+        end = np.asarray(simplex_to_plane_2p4s(a + vector[0], b + vector[1], c + vector[2]), dtype=float)
         points.append(start)
         vectors.append(end - start)
     return np.asarray(points), np.asarray(vectors)
@@ -1023,10 +1409,10 @@ def _project_to_2p3s_simplex(X, Y):
 
 def _speed_2p3s(x, y, payoff_data):
     """Speed magnitude of the 2P3S replicator dynamics at plotting coordinates (x, y)."""
-    r, p = sim_to_p(x, y)
+    r, p = plane_to_simplex_2p3s(x, y)
     vector = np.asarray(dynamics.replicator_2p3s([r, p], 0, payoff_data), dtype=float)
-    start = np.asarray(p_to_sim(r, p), dtype=float)
-    end = np.asarray(p_to_sim(r + vector[0], p + vector[1]), dtype=float)
+    start = np.asarray(simplex_to_plane_2p3s(r, p), dtype=float)
+    end = np.asarray(simplex_to_plane_2p3s(r + vector[0], p + vector[1]), dtype=float)
     return np.linalg.norm(end - start)
 
 
@@ -1052,12 +1438,36 @@ def _speed_grid_2p2s(U, V, payoff_data):
 
 
 def plot_speed_field(x_region, y_region, step, payoff_data, ax, cmap, levels, zorder):
-    """Plots movement speed for supported games."""
+    """Plot the speed magnitude of 2D replicator dynamics.
+
+    Parameters
+    ----------
+    x_region, y_region : sequence of float
+        Lower and upper plotting bounds for the grid.
+    step : int
+        Grid density used to evaluate speed.
+    payoff_data : numpy.ndarray or tuple of numpy.ndarray
+        Payoff representation of a 2P2S or 2P3S game.
+    ax : matplotlib.axes.Axes
+        Axes on which the speed field is drawn.
+    cmap : matplotlib colormap
+        Colormap used for the filled contour plot.
+    levels : int
+        Number of contour levels.
+    zorder : float
+        Drawing order of the speed field.
+
+    Returns
+    -------
+    matplotlib.contour.QuadContourSet or None
+        Filled contour artist for supported 2D games; None otherwise.
+    """
+    game_class = infer_game_class(payoff_data)
     x = np.linspace(x_region[0], x_region[1], step)
     y = np.linspace(y_region[0], y_region[1], step)
     X, Y = np.meshgrid(x, y)
 
-    if payoff_data[0].shape == (3,):  # symmetric 2P3S
+    if game_class == "2P3S":
         X, Y = _project_to_2p3s_simplex(X, Y)
         C = _speed_grid_2p3s(X, Y, payoff_data)
         surf = ax.contourf(
@@ -1072,7 +1482,7 @@ def plot_speed_field(x_region, y_region, step, payoff_data, ax, cmap, levels, zo
         )
         return surf
 
-    if payoff_data[0].shape == (2, 2):  # asymmetric 2P2S
+    if game_class == "2P2S":
         C = _speed_grid_2p2s(X, Y, payoff_data)
         surf = ax.contourf(
             X,

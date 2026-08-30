@@ -8,7 +8,7 @@ import numpy as np
 
 import analysis
 import drawer
-import parameters as param
+import examples
 
 __all__ = ["launch_replicator_widget"]
 
@@ -30,17 +30,17 @@ GAME_LABELS = {
 }
 
 
-def _sample_initial_conditions(payoff, count: int, rng: np.random.Generator) -> List[List[float]]:
-    if isinstance(payoff, np.ndarray):
-        n = payoff.shape[0]
+def _sample_initial_conditions(game, count: int, rng: np.random.Generator) -> List[List[float]]:
+    game_class = game.game_class
+    if game_class in ("2P3S", "2P4S"):
+        n = game.num_strategies()
         samples = rng.dirichlet(np.ones(n), size=count)
         return [vec[:-1].tolist() for vec in samples]
 
-    first = payoff[0]
-    if first.ndim == 2:  # asymmetric 2-player 2-strategy
+    if game_class == "2P2S":
         return rng.random((count, 2)).tolist()
 
-    if first.ndim == 3:  # cube (three players)
+    if game_class == "3P2S":
         return rng.random((count, 3)).tolist()
 
     return rng.random((count, 2)).tolist()
@@ -48,7 +48,7 @@ def _sample_initial_conditions(payoff, count: int, rng: np.random.Generator) -> 
 
 def _plot(
     game_key: str,
-    example_id: int,
+    example_name: str,
     *,
     num_traj: int,
     tmax: float,
@@ -60,30 +60,30 @@ def _plot(
     show_payoff_data: bool,
     show_analysis_table: bool,
 ) -> None:
-    games = param.available_games(game_key)
-    game = games[example_id]
+    game = examples.games(example_name)
     payoff = game.payoff_data
 
     if show_payoff_data:
         _display_payoff_data(game)
 
     if show_analysis_table:
-        display(Markdown("### Equilibrium Analysis"))
-        display(analysis.equilibrium_table(game))
+        _display_section_title("Equilibrium Analysis")
+        _display_analysis_table(game)
 
     rng = np.random.default_rng(seed)
-    starts = _sample_initial_conditions(payoff, num_traj, rng)
+    starts = _sample_initial_conditions(game, num_traj, rng)
     trajectory_color = "royalblue" if game_key in ("2P4S", "3P2S") else "black"
     _, ax = drawer.plot_game(
         game,
         starts=starts,
         tmax=tmax,
         trajectory_arrows=_arrow_positions(num_arrows),
-        trajectory_color=trajectory_color,
+        trajectory_color="black" if game_key in ("2P3S", "2P2S") else trajectory_color,
         show_speed=show_speed,
-        speed_cmap=plt.cm.plasma,
+        speed_cmap=plt.cm.cividis,
         speed_levels=80,
         show_vector_field=show_vector_field,
+        vector_color="white" if game_key in ("2P3S", "2P2S") else "black",
         show_equilibria=show_equilibria,
         sink_color="black",
         saddle_color="gray",
@@ -101,7 +101,7 @@ def _arrow_positions(count: int) -> List[float]:
 
 
 def _display_payoff_data(game) -> None:
-    display(Markdown("### Payoff Data"))
+    _display_section_title("Payoff Data")
     payoff = game.payoff_data
     game_class = game.game_class
 
@@ -110,7 +110,7 @@ def _display_payoff_data(game) -> None:
         return
 
     if game_class == "2P2S":
-        display(Math(_bimatrix_payoff_latex(payoff, game.strategy_labels)))
+        display(Math(_bimatrix_payoff_latex(payoff, game.player_strategy_labels)))
         return
 
     if game_class == "3P2S":
@@ -126,6 +126,76 @@ def _display_payoff_data(game) -> None:
         display(player_payoff)
 
 
+def _display_section_title(title: str) -> None:
+    display(Markdown(f"<br><h3>{title}</h3><br>"))
+
+
+def _display_analysis_table(game) -> None:
+    rows = analysis.analyze_equilibria(game).to_rows()
+    display(Math(_analysis_table_latex(rows)))
+
+
+def _analysis_table_latex(rows: List[dict]) -> str:
+    if not rows:
+        return r"\text{No isolated equilibria found.}"
+
+    columns = [
+        ("Position", "Position"),
+        ("Stability", "Stability Status"),
+        ("Nash", "Nash"),
+        ("ESS", "ESS"),
+        ("Strict Nash", "Strict Nash"),
+        ("Eigenvalues", "Eigenvalues"),
+        ("Eigenvectors", "Eigenvectors"),
+    ]
+
+    header = " & ".join(rf"\text{{{label}}}" for label, _ in columns) + r" \\"
+    table_rows = [header, r"\hline"]
+    for row in rows:
+        entries = [_analysis_cell(row[key]) for _, key in columns]
+        table_rows.append(" & ".join(entries) + r" \\")
+
+    return _latex_array("c" * len(columns), table_rows)
+
+
+def _analysis_cell(value) -> str:
+    if isinstance(value, list):
+        if value and all(isinstance(item, list) for item in value):
+            return _latex_vector_list(value)
+        return _latex_column_vector(value)
+    if value is None:
+        return r"\text{None}"
+    if isinstance(value, bool):
+        return rf"\text{{{value}}}"
+    if isinstance(value, str):
+        return rf"\text{{{value}}}"
+    return _format_number_latex(value)
+
+
+def _latex_column_vector(values) -> str:
+    entries = r" \\ ".join(_format_number_latex(value) for value in values)
+    return rf"\begin{{pmatrix}} {entries} \end{{pmatrix}}"
+
+
+def _latex_vector_list(vectors) -> str:
+    entries = ", ".join(_latex_column_vector(vector) for vector in vectors)
+    return rf"\left\{{ {entries} \right\}}"
+
+
+def _format_number_latex(value) -> str:
+    value = complex(value)
+    real = float(value.real)
+    imag = float(value.imag)
+
+    if np.isclose(imag, 0.0):
+        return _format_payoff(real)
+    if np.isclose(real, 0.0):
+        return rf"{_format_payoff(imag)}i"
+
+    sign = "+" if imag > 0 else "-"
+    return rf"{_format_payoff(real)} {sign} {_format_payoff(abs(imag))}i"
+
+
 def _symmetric_payoff_latex(payoff, labels: List[str]) -> str:
     n = payoff.shape[0]
     labels = _strategy_labels_or_default(labels, n)
@@ -137,14 +207,15 @@ def _symmetric_payoff_latex(payoff, labels: List[str]) -> str:
     return _latex_array("c|" + "c" * n, rows)
 
 
-def _bimatrix_payoff_latex(payoff, labels: List[str]) -> str:
+def _bimatrix_payoff_latex(payoff, player_strategy_labels: List[List[str]]) -> str:
     p1_payoff, p2_payoff = payoff
-    labels = _strategy_labels_or_default(labels, 2)
+    row_labels = _strategy_labels_or_default(player_strategy_labels[0], 2)
+    column_labels = _strategy_labels_or_default(player_strategy_labels[1], 2)
     rows = [
-        " & " + " & ".join(labels) + r" \\",
+        " & " + " & ".join(column_labels) + r" \\",
         r"\hline",
     ]
-    for i, row_label in enumerate(labels):
+    for i, row_label in enumerate(row_labels):
         entries = []
         for j in range(2):
             # Player 2 matrices use own action as row internally, so transpose for display.
@@ -202,7 +273,17 @@ def _latex_label(label: str) -> str:
     label = str(label).strip()
     if label.startswith("$") and label.endswith("$") and len(label) >= 2:
         return label[1:-1]
-    return label
+    return rf"\text{{{_escape_latex_text(label)}}}"
+
+
+def _escape_latex_text(value: str) -> str:
+    return (
+        value.replace("\\", r"\textbackslash{}")
+        .replace("_", r"\_")
+        .replace("%", r"\%")
+        .replace("&", r"\&")
+        .replace("#", r"\#")
+    )
 
 
 def _format_payoff(value) -> str:
@@ -213,14 +294,34 @@ def _format_payoff(value) -> str:
 
 
 def launch_replicator_widget() -> None:
-    """Display interactive controls inside a notebook."""
+    """Display the interactive pyNamo widget inside a Jupyter notebook.
+
+    The widget exposes the built-in example catalogue, trajectory controls,
+    speed-field and vector-field toggles, payoff display, and equilibrium
+    analysis display.
+
+    Raises
+    ------
+    ImportError
+        Raised when `ipywidgets` or IPython display tools are unavailable.
+
+    Notes
+    -----
+    This function is intended for notebook use. In a development notebook, reload
+    `interactive`, `drawer`, `analysis`, `dynamics`, `game`, and `examples`
+    before calling it if those modules have been edited during the session.
+    """
     if widgets is None:  # pragma: no cover
         raise ImportError(
             "ipywidgets is required for this feature"
         ) from _IPYWIDGETS_IMPORT_ERROR
 
     game_dropdown = widgets.Dropdown(
-        options=[(label, key) for key, label in GAME_LABELS.items() if key in param.GAME_CATALOG],
+        options=[
+            (label, key)
+            for key, label in GAME_LABELS.items()
+            if examples.games.by_class(key)
+        ],
         description="Game",
         value="2P3S",
     )
@@ -266,8 +367,8 @@ def launch_replicator_widget() -> None:
     )
 
     def _update_examples(*_):
-        games = param.available_games(game_dropdown.value)
-        options = [(g.name, idx) for idx, g in games.items()]
+        games_by_class = examples.games.by_class(game_dropdown.value)
+        options = [(g.name, name) for name, g in games_by_class.items()]
         example_dropdown.options = options
         if options:
             example_dropdown.value = options[0][1]

@@ -1,15 +1,10 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jun 17 18:18:00 2020
-
-@author: Benjamin Giraudon
-
-Status : OK
-"""
+"""Replicator vector fields and rest-point computation for pyNamo games."""
 
 import warnings
 
 import numpy as np
+
+from game import infer_game_class
 
 __all__ = [
     "DegenerateEquilibriumWarning",
@@ -118,7 +113,7 @@ def reverse_replicator_2p4s(state, t, payoff_data):
 
 
 # Replicator dynamics for a 3-player 2-strategy game
-def _expected_payoff(pay_tensor, probs, player_index, action):
+def _average_payoff_3p2s(pay_tensor, probs, player_index, action):
     """Compute expected payoff for a given player and action in a 3-player 2-strategy game."""
     total = 0.0
     for a0 in (0, 1):
@@ -145,8 +140,8 @@ def replicator_3p2s(state, t, payoff_tensors):
 
     payoff_data = []
     for idx, tensor in enumerate(tensors):
-        u0 = _expected_payoff(tensor, probs, idx, 0)
-        u1 = _expected_payoff(tensor, probs, idx, 1)
+        u0 = _average_payoff_3p2s(tensor, probs, idx, 0)
+        u1 = _average_payoff_3p2s(tensor, probs, idx, 1)
         payoff_data.append((u0, u1))
 
     dx = x * (payoff_data[0][1] - (x * payoff_data[0][1] + (1 - x) * payoff_data[0][0]))
@@ -166,6 +161,7 @@ def compute_equilibria(payoff_data):
     from sympy.solvers import solve
     from itertools import product
 
+    game_class = infer_game_class(payoff_data)
     time_0 = 0
     x_sym = Symbol('x')
     y_sym = Symbol('y')
@@ -208,7 +204,7 @@ def compute_equilibria(payoff_data):
             if not _contains_point(point, equilibria):
                 equilibria.append(list(point))
 
-    if payoff_data[0].shape == (3,):
+    if game_class == "2P3S":
         dx, dy = replicator_2p3s([x_sym, y_sym], time_0, payoff_data)
         mass_constraint = dx + dy
         solutions = solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
@@ -217,7 +213,7 @@ def compute_equilibria(payoff_data):
             _mark_degenerate()
         _add_missing_points([(1.0, 0.0), (0.0, 1.0), (0.0, 0.0)])
 
-    elif payoff_data[0].shape == (2, 2):
+    elif game_class == "2P2S":
         pay_p1, pay_p2 = payoff_data
         dx = _replicator_2p2s_population([x_sym, y_sym], time_0, pay_p1)
         dy = _replicator_2p2s_population([y_sym, x_sym], time_0, pay_p2)
@@ -227,7 +223,7 @@ def compute_equilibria(payoff_data):
             _mark_degenerate()
         _add_missing_points(product((0.0, 1.0), repeat=2))
 
-    elif payoff_data[0].shape == (2, 2, 2):
+    elif game_class == "3P2S":
         z_sym = Symbol('z')
         dx, dy, dz = replicator_3p2s([x_sym, y_sym, z_sym], time_0, payoff_data)
         solutions = solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
@@ -241,7 +237,7 @@ def compute_equilibria(payoff_data):
             if not _contains_point(vertex, equilibria):
                 equilibria.append(list(vertex))
 
-    elif payoff_data[0].shape == (4,):
+    elif game_class == "2P4S":
         z_sym = Symbol('z')
         dx, dy, dz = replicator_2p4s([x_sym, y_sym, z_sym], time_0, payoff_data)
         mass_constraint = dx + dy + dz

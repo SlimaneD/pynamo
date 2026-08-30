@@ -4,7 +4,7 @@ import pytest
 import analysis
 import dynamics
 import game
-import parameters as param
+import examples
 
 
 EXPECTED_COLUMNS = [
@@ -20,7 +20,7 @@ EXPECTED_COLUMNS = [
 
 
 def test_analysis_rows_have_expected_columns():
-    g = param.available_games("2P3S")[1]
+    g = examples.games.good_rps
     rows = analysis.analyze_equilibria(g).to_rows()
 
     assert rows
@@ -28,7 +28,7 @@ def test_analysis_rows_have_expected_columns():
 
 
 def test_matching_pennies_interior_equilibrium_is_found():
-    g = param.available_games("2P2S")[1]
+    g = examples.games.matching_pennies
     rows = analysis.analyze_equilibria(g).to_rows()
     positions = np.asarray([row["Position"] for row in rows], dtype=float)
 
@@ -57,9 +57,9 @@ def test_degenerate_equilibrium_warning_is_emitted():
 
 
 def test_static_equilibrium_concepts_are_present():
-    g = param.available_games("2P3S")[1]
-    record = analysis.analyze_equilibria(g).records[0]
+    g = examples.games.good_rps
+    equilibrium = analysis.analyze_equilibria(g).equilibria[0]
 
-    assert isinstance(record.nash, bool)
-    assert isinstance(record.strict_nash, bool)
-    assert isinstance(record.ess, bool)
+    assert isinstance(equilibrium.nash, bool)
+    assert isinstance(equilibrium.strict_nash, bool)
+    assert isinstance(equilibrium.ess, bool)

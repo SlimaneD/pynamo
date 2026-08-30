@@ -5,12 +5,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 import drawer
-import parameters as param
+import examples
 
 
 def test_plot_game_runs_for_all_supported_game_classes():
     for game_class in ("2P2S", "2P3S", "2P4S", "3P2S"):
-        g = param.available_games(game_class)[1]
+        g = next(iter(examples.games.by_class(game_class).values()))
         fig, ax = drawer.plot_game(
             g,
             random_state=0,
@@ -26,7 +26,7 @@ def test_plot_game_runs_for_all_supported_game_classes():
 
 
 def test_plot_game_accepts_one_color_per_trajectory():
-    g = param.available_games("2P2S")[1]
+    g = examples.games.matching_pennies
     fig, ax = drawer.plot_game(
         g,
         starts=[[0.2, 0.7], [0.8, 0.3]],
@@ -41,7 +41,7 @@ def test_plot_game_accepts_one_color_per_trajectory():
 
 
 def test_plot_vector_field_only():
-    g = param.available_games("2P2S")[2]
+    g = examples.games.two_player_hawk_dove
     fig, ax = drawer.plot_game(
         g,
         show_trajectories=False,
