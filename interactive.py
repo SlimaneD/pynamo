@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import List
+import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -50,6 +51,7 @@ def _plot(
     game_key: str,
     example_name: str,
     *,
+    fig=None,
     num_traj: int,
     tmax: float,
     seed: int,
@@ -57,24 +59,15 @@ def _plot(
     show_vector_field: bool,
     num_arrows: int,
     show_equilibria: bool,
-    show_payoff_data: bool,
-    show_analysis_table: bool,
-) -> None:
+):
     game = examples.games(example_name)
-    payoff = game.payoff_data
-
-    if show_payoff_data:
-        _display_payoff_data(game)
-
-    if show_analysis_table:
-        _display_section_title("Equilibrium Analysis")
-        _display_analysis_table(game)
 
     rng = np.random.default_rng(seed)
     starts = _sample_initial_conditions(game, num_traj, rng)
     trajectory_color = "royalblue" if game_key in ("2P4S", "3P2S") else "black"
-    _, ax = drawer.plot_game(
+    fig, ax = drawer.phase_portrait(
         game,
+        fig=fig,
         starts=starts,
         tmax=tmax,
         trajectory_arrows=_arrow_positions(num_arrows),
@@ -90,8 +83,8 @@ def _plot(
         source_color="white",
         equilibrium_size=60,
     )
-    ax.set_title(f"{game_key} - {game.name}")
-    plt.show()
+    ax.set_title(f"{game_key} - {game.name}", pad=18)
+    return fig, ax
 
 
 def _arrow_positions(count: int) -> List[float]:
@@ -101,7 +94,6 @@ def _arrow_positions(count: int) -> List[float]:
 
 
 def _display_payoff_data(game) -> None:
-    _display_section_title("Payoff Data")
     payoff = game.payoff_data
     game_class = game.game_class
 
@@ -133,6 +125,105 @@ def _display_section_title(title: str) -> None:
 def _display_analysis_table(game) -> None:
     rows = analysis.analyze_equilibria(game).to_rows()
     display(Math(_analysis_table_latex(rows)))
+
+
+def _append_section_title(output, title: str) -> None:
+    output.append_display_data(Markdown(f"<br><h3>{title}</h3><br>"))
+
+
+def _append_payoff_data(output, game) -> None:
+    payoff = game.payoff_data
+    game_class = game.game_class
+
+    if game_class in ("2P3S", "2P4S"):
+        output.append_display_data(Math(_symmetric_payoff_latex(payoff, game.strategy_labels)))
+        return
+
+    if game_class == "2P2S":
+        output.append_display_data(Math(_bimatrix_payoff_latex(payoff, game.player_strategy_labels)))
+        return
+
+    if game_class == "3P2S":
+        output.append_display_data(Markdown(f"$$\n{_three_player_payoff_latex(payoff).strip()}\n$$"))
+        return
+
+    if isinstance(payoff, np.ndarray):
+        output.append_display_data(payoff)
+        return
+
+    for idx, player_payoff in enumerate(payoff, start=1):
+        output.append_display_data(Markdown(f"**Player {idx}**"))
+        output.append_display_data(player_payoff)
+
+
+def _append_analysis_table(output, game) -> None:
+    rows = analysis.analyze_equilibria(game).to_rows()
+    output.append_display_data(Math(_analysis_table_latex(rows)))
+
+
+def _info_outputs(game, show_payoff_data: bool, show_analysis_table: bool) -> tuple[dict, ...]:
+    outputs = []
+    if show_payoff_data:
+        outputs.append(_markdown_output("<br><h3>Payoff Data</h3><br>"))
+        outputs.append(_payoff_data_output(game))
+    if show_analysis_table:
+        outputs.append(_markdown_output("<br><h3>Equilibrium And Stability Analysis</h3><br>"))
+        rows = analysis.analyze_equilibria(game).to_rows()
+        outputs.append(_math_output(_analysis_table_latex(rows)))
+    return tuple(outputs)
+
+
+def _payoff_data_output(game) -> dict:
+    payoff = game.payoff_data
+    game_class = game.game_class
+
+    if game_class in ("2P3S", "2P4S"):
+        return _math_output(_symmetric_payoff_latex(payoff, game.strategy_labels))
+
+    if game_class == "2P2S":
+        return _math_output(_bimatrix_payoff_latex(payoff, game.player_strategy_labels))
+
+    if game_class == "3P2S":
+        return _markdown_output(f"$$\n{_three_player_payoff_latex(payoff).strip()}\n$$")
+
+    return _markdown_output(f"```\n{payoff}\n```")
+
+
+def _markdown_output(markdown: str) -> dict:
+    return {
+        "output_type": "display_data",
+        "data": {"text/markdown": markdown},
+        "metadata": {},
+    }
+
+
+def _math_output(latex: str) -> dict:
+    return {
+        "output_type": "display_data",
+        "data": {"text/latex": f"$\\displaystyle\n{latex.strip()}\n$"},
+        "metadata": {},
+    }
+
+
+def _warning_outputs(caught_warnings) -> tuple[dict, ...]:
+    if not caught_warnings:
+        return ()
+
+    lines = []
+    seen = set()
+    for warning in caught_warnings:
+        category = warning.category.__name__
+        message = str(warning.message)
+        key = (category, message)
+        if key in seen:
+            continue
+        seen.add(key)
+        lines.append(f"- **{category}**: {message}")
+
+    if not lines:
+        return ()
+
+    return (_markdown_output("<br><h3>Warnings</h3><br>\n\n" + "\n".join(lines)),)
 
 
 def _analysis_table_latex(rows: List[dict]) -> str:
@@ -366,12 +457,19 @@ def launch_replicator_widget() -> None:
         continuous_update=False,
     )
 
+    updating_examples = False
+
     def _update_examples(*_):
-        games_by_class = examples.games.by_class(game_dropdown.value)
-        options = [(g.name, name) for name, g in games_by_class.items()]
-        example_dropdown.options = options
-        if options:
-            example_dropdown.value = options[0][1]
+        nonlocal updating_examples
+        updating_examples = True
+        try:
+            games_by_class = examples.games.by_class(game_dropdown.value)
+            options = [(g.name, name) for name, g in games_by_class.items()]
+            example_dropdown.options = options
+            if options:
+                example_dropdown.value = options[0][1]
+        finally:
+            updating_examples = False
 
     _update_examples()
     game_dropdown.observe(_update_examples, names="value")
@@ -387,24 +485,76 @@ def launch_replicator_widget() -> None:
         ]
     )
 
-    output = widgets.Output()
+    info_output = widgets.Output()
+    fallback_plot_output = widgets.Output()
+    plot_area = widgets.VBox([fallback_plot_output])
+
+    last_render_state = None
+    figure = None
 
     def _render(*args):
-        with output:
-            clear_output(wait=True)
-            _plot(
-                game_dropdown.value,
-                example_dropdown.value,
-                num_traj=traj_slider.value,
-                tmax=tmax_slider.value,
-                seed=seed_slider.value,
-                show_speed=speed_toggle.value,
-                show_vector_field=vector_toggle.value,
-                num_arrows=arrow_slider.value,
-                show_equilibria=eq_toggle.value,
-                show_payoff_data=payoff_toggle.value,
-                show_analysis_table=analysis_toggle.value,
+        nonlocal figure, last_render_state
+        if updating_examples:
+            return
+        render_state = (
+            game_dropdown.value,
+            example_dropdown.value,
+            traj_slider.value,
+            tmax_slider.value,
+            seed_slider.value,
+            speed_toggle.value,
+            vector_toggle.value,
+            eq_toggle.value,
+            payoff_toggle.value,
+            analysis_toggle.value,
+            arrow_slider.value,
+        )
+        if render_state == last_render_state:
+            return
+        last_render_state = render_state
+
+        with warnings.catch_warnings(record=True) as caught_warnings:
+            warnings.simplefilter("always")
+            warnings.simplefilter("ignore", DeprecationWarning)
+            current_game = examples.games(example_dropdown.value)
+            info_outputs = list(
+                _info_outputs(
+                    current_game,
+                    show_payoff_data=payoff_toggle.value,
+                    show_analysis_table=analysis_toggle.value,
+                )
             )
+
+            if figure is not None:
+                figure.clear()
+            first_render = figure is None
+            with plt.ioff():
+                figure, _ = _plot(
+                    game_dropdown.value,
+                    example_dropdown.value,
+                    fig=figure,
+                    num_traj=traj_slider.value,
+                    tmax=tmax_slider.value,
+                    seed=seed_slider.value,
+                    show_speed=speed_toggle.value,
+                    show_vector_field=vector_toggle.value,
+                    num_arrows=arrow_slider.value,
+                    show_equilibria=eq_toggle.value,
+                )
+
+        if first_render:
+            if isinstance(figure.canvas, widgets.Widget):
+                plot_area.children = (figure.canvas,)
+            else:
+                plot_area.children = (fallback_plot_output,)
+                with fallback_plot_output:
+                    clear_output(wait=True)
+                    display(figure)
+        else:
+            figure.canvas.draw_idle()
+
+        info_outputs.extend(_warning_outputs(caught_warnings))
+        info_output.outputs = tuple(info_outputs)
 
     for widget in [
         game_dropdown,
@@ -421,5 +571,5 @@ def launch_replicator_widget() -> None:
     ]:
         widget.observe(_render, names="value")
 
-    display(controls, output)
+    display(widgets.VBox([controls, info_output, plot_area]))
     _render()

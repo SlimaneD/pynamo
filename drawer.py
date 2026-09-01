@@ -1,6 +1,6 @@
 """Plotting utilities for pyNamo replicator dynamics.
 
-The main public entry point is plot_game. Lower-level functions remain
+The main public entry point is phase_portrait. Lower-level functions remain
 available for advanced users who want direct control over state spaces,
 trajectories, speed fields, vector fields, and equilibrium markers.
 """
@@ -33,7 +33,7 @@ __all__ = [
     "plot_equilibria",
     "plot_speed_field",
     "plot_vector_field",
-    "plot_game",
+    "phase_portrait",
 ]
 
 
@@ -855,7 +855,7 @@ def plot_vector_field(
     raise ValueError(f"Unsupported game class: {game_class}")
 
 
-def plot_game(
+def phase_portrait(
     game,
     *,
     fig=None,
@@ -866,6 +866,7 @@ def plot_game(
     xlabel=None,
     ylabel=None,
     zlabel=None,
+    title_pad=18,
     starts=None,
     random_state=None,
     simplex_font_size=DEFAULT_PLOT_STYLE["simplex_font_size"],
@@ -925,6 +926,9 @@ def plot_game(
     xlabel, ylabel, zlabel : str or None, optional
         Axis-label overrides. If None, pyNamo uses labels derived from the game.
         `zlabel` is ignored for 2D plots.
+    title_pad : float, default=18
+        Padding between the plot title and the axes. Increasing this is useful
+        when title text is close to simplex labels.
     starts : list of list of float, optional
         Initial conditions for trajectories. If None, four random initial
         conditions are generated.
@@ -986,7 +990,7 @@ def plot_game(
         Time step used for numerical integration.
     trajectory_arrows : list of float or None, optional
         Positions at which to draw direction markers on forward trajectories.
-        Values are fractions of the sampled trajectory, between 0 and 1. Use an
+        Values are fractions of the sampled trajectory, between 0 and 1. Thus the exact time at which the i_th arrow is drawn is trajectory_arrows[i]*tmax. Use an
         empty list `[]` to draw trajectories without arrows. If None, the
         default arrow positions are used.
     tmax : float, default=45
@@ -1116,7 +1120,7 @@ def plot_game(
             )
 
     if title:
-        ax.set_title(title)
+        ax.set_title(title, pad=title_pad)
 
     return fig, ax
 

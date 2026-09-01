@@ -169,18 +169,68 @@ def compute_equilibria(payoff_data):
     degenerate = False
     message = None
 
-    def _extract_isolated_solutions(solutions, symbols):
+    def _split_solution_branches(solutions, symbols):
         isolated = []
+        parametric = []
         found_degeneracy = False
         for sol in solutions:
             if not all(sym in sol for sym in symbols):
                 found_degeneracy = True
+                parametric.append(sol)
                 continue
             try:
                 isolated.append([float(sol[sym]) for sym in symbols])
             except (TypeError, ValueError):
                 found_degeneracy = True
-        return isolated, found_degeneracy
+                parametric.append(sol)
+
+        isolated = [
+            point
+            for point in isolated
+            if _is_vertex(point) or not _point_in_parametric_branch(point, parametric, symbols)
+        ]
+        return isolated, parametric, found_degeneracy
+
+    def _is_vertex(point):
+        point = list(point)
+        if game_class in ("2P3S", "2P4S"):
+            origin = all(abs(coord) < 1e-9 for coord in point)
+            basis_vertex = (
+                sum(abs(coord - 1.0) < 1e-9 for coord in point) == 1
+                and sum(abs(coord) < 1e-9 for coord in point) == len(point) - 1
+            )
+            return origin or basis_vertex
+
+        if game_class in ("2P2S", "3P2S"):
+            return all(abs(coord) < 1e-9 or abs(coord - 1.0) < 1e-9 for coord in point)
+
+        return False
+
+    def _point_in_parametric_branch(point, branches, symbols):
+        substitutions = {
+            sym: point[idx]
+            for idx, sym in enumerate(symbols)
+        }
+        for branch in branches:
+            contained = True
+            for idx, (sym, expression) in enumerate(branch.items()):
+                if sym not in symbols:
+                    contained = False
+                    break
+                try:
+                    value = float(expression.subs(substitutions))
+                except AttributeError:
+                    value = float(expression)
+                except (TypeError, ValueError):
+                    contained = False
+                    break
+                point_index = symbols.index(sym)
+                if abs(point[point_index] - value) >= 1e-9:
+                    contained = False
+                    break
+            if contained:
+                return True
+        return False
 
     def _mark_degenerate():
         nonlocal degenerate, message
@@ -199,42 +249,55 @@ def compute_equilibria(payoff_data):
                 return True
         return False
 
-    def _add_missing_points(points):
+    def _add_missing_points(points, parametric=(), symbols=()):
         for point in points:
-            if not _contains_point(point, equilibria):
+            if (
+                not _contains_point(point, equilibria)
+                and (
+                    _is_vertex(point)
+                    or not _point_in_parametric_branch(point, parametric, symbols)
+                )
+            ):
                 equilibria.append(list(point))
 
     if game_class == "2P3S":
         dx, dy = replicator_2p3s([x_sym, y_sym], time_0, payoff_data)
         mass_constraint = dx + dy
         solutions = solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
-        equilibria, degenerate = _extract_isolated_solutions(solutions, (x_sym, y_sym))
+        symbols = (x_sym, y_sym)
+        equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
             _mark_degenerate()
-        _add_missing_points([(1.0, 0.0), (0.0, 1.0), (0.0, 0.0)])
+        _add_missing_points([(1.0, 0.0), (0.0, 1.0), (0.0, 0.0)], parametric, symbols)
 
     elif game_class == "2P2S":
         pay_p1, pay_p2 = payoff_data
         dx = _replicator_2p2s_population([x_sym, y_sym], time_0, pay_p1)
         dy = _replicator_2p2s_population([y_sym, x_sym], time_0, pay_p2)
         solutions = solve([dx, dy], x_sym, y_sym, dict=True)
-        equilibria, degenerate = _extract_isolated_solutions(solutions, (x_sym, y_sym))
+        symbols = (x_sym, y_sym)
+        equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
             _mark_degenerate()
-        _add_missing_points(product((0.0, 1.0), repeat=2))
+        _add_missing_points(product((0.0, 1.0), repeat=2), parametric, symbols)
 
     elif game_class == "3P2S":
         z_sym = Symbol('z')
         dx, dy, dz = replicator_3p2s([x_sym, y_sym, z_sym], time_0, payoff_data)
         solutions = solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
-        equilibria, degenerate = _extract_isolated_solutions(
-            solutions, (x_sym, y_sym, z_sym)
-        )
+        symbols = (x_sym, y_sym, z_sym)
+        equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
             _mark_degenerate()
 
         for vertex in product((0.0, 1.0), repeat=3):
-            if not _contains_point(vertex, equilibria):
+            if (
+                not _contains_point(vertex, equilibria)
+                and (
+                    _is_vertex(vertex)
+                    or not _point_in_parametric_branch(vertex, parametric, symbols)
+                )
+            ):
                 equilibria.append(list(vertex))
 
     elif game_class == "2P4S":
@@ -242,11 +305,14 @@ def compute_equilibria(payoff_data):
         dx, dy, dz = replicator_2p4s([x_sym, y_sym, z_sym], time_0, payoff_data)
         mass_constraint = dx + dy + dz
         solutions = solve([dx, dy, dz, mass_constraint], x_sym, y_sym, z_sym, dict=True)
-        equilibria, degenerate = _extract_isolated_solutions(
-            solutions, (x_sym, y_sym, z_sym)
-        )
+        symbols = (x_sym, y_sym, z_sym)
+        equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
             _mark_degenerate()
-        _add_missing_points([(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, 0.0)])
+        _add_missing_points(
+            [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, 0.0)],
+            parametric,
+            symbols,
+        )
 
     return EquilibriumResult(equilibria, degenerate=degenerate, message=message)

@@ -8,10 +8,10 @@ import drawer
 import examples
 
 
-def test_plot_game_runs_for_all_supported_game_classes():
+def test_phase_portrait_runs_for_all_supported_game_classes():
     for game_class in ("2P2S", "2P3S", "2P4S", "3P2S"):
         g = next(iter(examples.games.by_class(game_class).values()))
-        fig, ax = drawer.plot_game(
+        fig, ax = drawer.phase_portrait(
             g,
             random_state=0,
             tmax=0.2,
@@ -25,9 +25,9 @@ def test_plot_game_runs_for_all_supported_game_classes():
         plt.close(fig)
 
 
-def test_plot_game_accepts_one_color_per_trajectory():
+def test_phase_portrait_accepts_one_color_per_trajectory():
     g = examples.games.matching_pennies
-    fig, ax = drawer.plot_game(
+    fig, ax = drawer.phase_portrait(
         g,
         starts=[[0.2, 0.7], [0.8, 0.3]],
         trajectory_color=["tab:blue", "tab:orange"],
@@ -42,7 +42,7 @@ def test_plot_game_accepts_one_color_per_trajectory():
 
 def test_plot_vector_field_only():
     g = examples.games.two_player_hawk_dove
-    fig, ax = drawer.plot_game(
+    fig, ax = drawer.phase_portrait(
         g,
         show_trajectories=False,
         show_equilibria=False,

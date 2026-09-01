@@ -152,6 +152,9 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
     Returned positions follow the strategy order supplied when defining the game.
     For 2-strategy asymmetric games, each coordinate is the probability that the
     corresponding player uses their first listed strategy.
+    Eigenvalue computations are numerical. Tiny imaginary parts below the
+    internal tolerance are treated as numerical noise when filtering admissible
+    eigendirections at boundary equilibria.
     """
     payoff_data = _payoff_data(game)
     game_class = infer_game_class(game)
@@ -180,7 +183,7 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
             )
             warning = None
 
-            if stability in ("center", "undetermined"):
+            if stability == "undetermined":
                 if ess:
                     stability = "sink"
                 else:
@@ -526,7 +529,7 @@ def _is_admissible_direction(point, direction, game_class, tol: float = 1e-9) ->
     return False
 
 
-def _admissible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
+def _admissible_eigenpairs(point, eig_data, game_class, tol: float = 1e-7):
     eigvals, eigvecs = eig_data
     if _is_interior_point(point, game_class, tol):
         return np.asarray(eigvals, dtype=complex), np.asarray(eigvecs), False
@@ -536,6 +539,9 @@ def _admissible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
     skipped_complex_boundary = False
     for idx, eigval in enumerate(eigvals):
         eigvec = eigvecs[:, idx]
+        if abs(np.imag(eigval)) <= tol:
+            eigval = complex(np.real(eigval), 0.0)
+
         if np.linalg.norm(np.imag(eigvec)) > tol:
             skipped_complex_boundary = True
             continue
@@ -546,13 +552,118 @@ def _admissible_eigenpairs(point, eig_data, game_class, tol: float = 1e-9):
             or _is_admissible_direction(point, -direction, game_class, tol)
         ):
             values.append(eigval)
-            vectors.append(eigvec)
+            vectors.append(direction)
+
+    values, vectors = _complete_repeated_boundary_eigenspaces(
+        point,
+        eigvals,
+        eigvecs,
+        values,
+        vectors,
+        game_class,
+        tol,
+    )
 
     if vectors:
         vectors = np.column_stack(vectors)
     else:
         vectors = np.empty((len(point), 0))
     return np.asarray(values, dtype=complex), vectors, skipped_complex_boundary
+
+
+def _complete_repeated_boundary_eigenspaces(
+    point,
+    eigvals,
+    eigvecs,
+    values,
+    vectors,
+    game_class,
+    tol,
+):
+    """Add admissible directions missed by arbitrary repeated-eigenvalue bases."""
+    candidates = _admissible_direction_candidates(point, game_class)
+    if not candidates:
+        return values, vectors
+
+    used = [False] * len(eigvals)
+    for idx, eigval in enumerate(eigvals):
+        if used[idx]:
+            continue
+
+        group = [
+            j
+            for j, other in enumerate(eigvals)
+            if abs(eigval - other) <= tol
+        ]
+        for j in group:
+            used[j] = True
+
+        if len(group) <= 1:
+            continue
+
+        kept_count = sum(abs(eigval - val) <= tol for val in values)
+        missing_count = len(group) - kept_count
+        if missing_count <= 0:
+            continue
+
+        eigenspace = eigvecs[:, group]
+        for candidate in candidates:
+            if missing_count <= 0:
+                break
+            if not _direction_in_span(candidate, eigenspace, tol):
+                continue
+            if _is_redundant_direction(candidate, vectors, tol):
+                continue
+            values.append(complex(np.real(eigval), 0.0) if abs(np.imag(eigval)) <= tol else eigval)
+            vectors.append(candidate)
+            missing_count -= 1
+
+    return values, vectors
+
+
+def _admissible_direction_candidates(point, game_class):
+    point = np.asarray(point, dtype=float)
+
+    if game_class == "2P3S":
+        full = _full_position(point, game_class)
+        candidates = []
+        for absent_strategy in np.flatnonzero(np.isclose(full, 0.0)):
+            for present_strategy in np.flatnonzero(full > 0.0):
+                direction_full = np.zeros(3)
+                direction_full[absent_strategy] = 1.0
+                direction_full[present_strategy] = -1.0
+                candidates.append(direction_full[:2])
+        return candidates
+
+    if game_class == "2P4S":
+        full = _full_position(point, game_class)
+        candidates = []
+        for absent_strategy in np.flatnonzero(np.isclose(full, 0.0)):
+            for present_strategy in np.flatnonzero(full > 0.0):
+                direction_full = np.zeros(4)
+                direction_full[absent_strategy] = 1.0
+                direction_full[present_strategy] = -1.0
+                candidates.append(direction_full[:3])
+        return candidates
+
+    return []
+
+
+def _direction_in_span(direction, basis, tol):
+    direction = np.asarray(direction, dtype=float)
+    basis = np.asarray(basis, dtype=float)
+    if basis.size == 0:
+        return False
+    coeffs, *_ = np.linalg.lstsq(basis, direction, rcond=None)
+    projection = basis @ coeffs
+    return np.linalg.norm(projection - direction) <= tol
+
+
+def _is_redundant_direction(direction, vectors, tol):
+    if not vectors:
+        return False
+    existing = np.column_stack(vectors)
+    return _direction_in_span(direction, existing, tol)
 
 
 def _classify_from_admissible_eigenvalues(admissible, skipped_complex_boundary, tol: float = 1e-9):
@@ -667,6 +778,6 @@ def _format_matrix(values, ndigits: int):
         return None
     matrix = np.asarray(values)
     return [
-        [_format_number(matrix[row, col], ndigits) for col in range(matrix.shape[1])]
-        for row in range(matrix.shape[0])
+        [_format_number(matrix[row, col], ndigits) for row in range(matrix.shape[0])]
+        for col in range(matrix.shape[1])
     ]

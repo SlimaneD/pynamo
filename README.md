@@ -47,14 +47,14 @@ toggle speed/vector fields, and display payoff data and equilibrium analysis.
 
 ## Plotting a Game
 
-The main plotting interface is `drawer.plot_game`:
+The main plotting interface is `drawer.phase_portrait`:
 
 ```python
 import drawer
 import examples
 
 game = examples.games.matching_pennies
-fig, ax = drawer.plot_game(game)
+fig, ax = drawer.phase_portrait(game)
 ```
 
 You can retrieve built-in games by attribute or by name:
@@ -68,7 +68,7 @@ examples.games.by_class("2P2S")
 Override plot parameters directly:
 
 ```python
-fig, ax = drawer.plot_game(
+fig, ax = drawer.phase_portrait(
     game,
     random_state=1,
     tmax=60,
@@ -84,7 +84,7 @@ fig, ax = drawer.plot_game(
 Use one color per trajectory by passing a list:
 
 ```python
-fig, ax = drawer.plot_game(
+fig, ax = drawer.phase_portrait(
     examples.games.cyclic_mismatching_pennies,
     starts=[[0.52, 0.50, 0.48], [0.70, 0.45, 0.35]],
     trajectory_color=["tab:blue", "tab:orange"],
@@ -155,7 +155,7 @@ equilibria are drawn with the source color for visual compatibility.
 - `examples.py` – catalogue of predefined games.
 - `dynamics.py` – replicator vector fields and rest-point computation.
 - `analysis.py` – structured equilibrium analysis tables.
-- `drawer.py` – plotting helpers and the high-level `plot_game` interface.
+- `drawer.py` – plotting helpers and the high-level `phase_portrait` interface.
 - `interactive.py` – Jupyter widget front-end.
 
 Provide new payoff matrices directly with `game.Game`, or add curated examples

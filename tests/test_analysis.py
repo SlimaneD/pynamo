@@ -63,3 +63,17 @@ def test_static_equilibrium_concepts_are_present():
     assert isinstance(equilibrium.nash, bool)
     assert isinstance(equilibrium.strict_nash, bool)
     assert isinstance(equilibrium.ess, bool)
+
+
+def test_hawk_dove_retaliator_edge_ess_has_eigenpairs():
+    result = analysis.analyze_equilibria(examples.games.hawk_dove_retaliator)
+    equilibrium = next(
+        eq
+        for eq in result.equilibria
+        if np.allclose(eq.full_position, [2 / 3, 1 / 3, 0])
+    )
+
+    assert equilibrium.ess is True
+    assert equilibrium.stability == "sink"
+    assert equilibrium.admissible_eigenvalues.size > 0
+    assert equilibrium.admissible_eigenvectors.shape[1] > 0
