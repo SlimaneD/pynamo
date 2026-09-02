@@ -72,16 +72,18 @@ def _plot(
         tmax=tmax,
         trajectory_arrows=_arrow_positions(num_arrows),
         trajectory_color="black" if game_key in ("2P3S", "2P2S") else trajectory_color,
+        trajectory_linewidth=1.2,
         show_speed=show_speed,
-        speed_cmap=plt.cm.cividis,
+        speed_cmap=plt.cm.Spectral_r,
         speed_levels=80,
         show_vector_field=show_vector_field,
-        vector_color="white" if game_key in ("2P3S", "2P2S") else "black",
+        vector_color="black" if game_key in ("2P3S", "2P2S") else "black",
         show_equilibria=show_equilibria,
         sink_color="black",
         saddle_color="gray",
         source_color="white",
         equilibrium_size=60,
+        show_faces=True
     )
     ax.set_title(f"{game_key} - {game.name}", pad=18)
     return fig, ax
@@ -428,7 +430,7 @@ def launch_replicator_widget() -> None:
         continuous_update=False,
     )
     traj_slider = widgets.IntSlider(
-        value=4,
+        value=3,
         min=1,
         max=12,
         step=1,
