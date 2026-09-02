@@ -17,6 +17,7 @@ from matplotlib import colors as mcolors
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 import analysis
 import dynamics
@@ -64,11 +65,16 @@ DEFAULT_PLOT_STYLE = {
     "vector_width": 0.003,
     "vector_zorder": 15,
     "vector_normalize": True,
+    "show_faces": False,
+    "face_colors": None,
+    "face_alpha": 0.15,
+    "face_zorder": 0,
     "show_trajectories": True,
     "trajectory_step": 0.02,
     "trajectory_arrows": [0.02],
     "tmax": 45,
     "trajectory_color": "black",
+    "trajectory_linewidth": 0.8,
     "arrow_size": 0.04,
     "arrow_width": 0.015,
     "trajectory_zorder": 20,
@@ -407,6 +413,74 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
     return []
 
 
+def draw_3d_faces(payoff_data, ax, face_colors=None, alpha=0.15, zorder=0):
+    """Draw transparent colored faces for 3D state spaces."""
+    game_class = infer_game_class(payoff_data)
+    if game_class == "2P4S":
+        faces = _tetrahedron_faces_2p4s()
+    elif game_class == "3P2S":
+        faces = _cube_faces_3p2s()
+    else:
+        return []
+
+    colors = _face_colors(face_colors, len(faces))
+    artists = []
+    for vertices, color in zip(faces, colors):
+        collection = Poly3DCollection(
+            [vertices],
+            facecolors=mcolors.to_rgba(color, alpha),
+            edgecolors="none",
+            zorder=zorder,
+        )
+        ax.add_collection3d(collection)
+        artists.append(collection)
+    return artists
+
+
+def _tetrahedron_faces_2p4s():
+    strategy_1_vertex = simplex_to_plane_2p4s(1, 0, 0)
+    strategy_2_vertex = simplex_to_plane_2p4s(0, 1, 0)
+    strategy_3_vertex = simplex_to_plane_2p4s(0, 0, 1)
+    strategy_4_vertex = simplex_to_plane_2p4s(0, 0, 0)
+    return [
+        [strategy_1_vertex, strategy_2_vertex, strategy_3_vertex],
+        [strategy_1_vertex, strategy_2_vertex, strategy_4_vertex],
+        [strategy_1_vertex, strategy_3_vertex, strategy_4_vertex],
+        [strategy_2_vertex, strategy_3_vertex, strategy_4_vertex],
+    ]
+
+
+def _cube_faces_3p2s():
+    return [
+        [(0, 0, 0), (0, 1, 0), (0, 1, 1), (0, 0, 1)],
+        [(1, 0, 0), (1, 1, 0), (1, 1, 1), (1, 0, 1)],
+        [(0, 0, 0), (1, 0, 0), (1, 0, 1), (0, 0, 1)],
+        [(0, 1, 0), (1, 1, 0), (1, 1, 1), (0, 1, 1)],
+        [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)],
+        [(0, 0, 1), (1, 0, 1), (1, 1, 1), (0, 1, 1)],
+    ]
+
+
+def _face_colors(face_colors, face_count):
+    default_colors = [
+        "#9ecae1",
+        "#fdd49e",
+        "#a1d99b",
+        "#fbb4b9",
+        "#c7c7e2",
+        "#fdae6b",
+    ]
+    if face_colors is None:
+        return default_colors[:face_count]
+    if isinstance(face_colors, str):
+        return [face_colors] * face_count
+    if len(face_colors) != face_count:
+        raise ValueError(
+            f"Expected {face_count} face colors, got {len(face_colors)}."
+        )
+    return list(face_colors)
+
+
 def plot_trajectory(
     initial_state,
     payoff_data,
@@ -416,6 +490,7 @@ def plot_trajectory(
     fig,
     ax,
     trajectory_color,
+    trajectory_linewidth,
     arrow_size,
     arrow_width,
     zorder,
@@ -445,6 +520,9 @@ def plot_trajectory(
         Axes on which trajectories are drawn.
     trajectory_color : matplotlib color
         Color of the trajectory lines.
+    trajectory_linewidth : float
+        Width of the trajectory lines. The same width is used for forward and
+        backward trajectories.
     arrow_size : float
         Size of trajectory direction markers.
     arrow_width : float
@@ -478,6 +556,7 @@ def plot_trajectory(
         forward_line = ax.plot(
             forward_path[:, 0],
             forward_path[:, 1],
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
             clip_on=False,
@@ -485,6 +564,7 @@ def plot_trajectory(
         backward_line = ax.plot(
             backward_path[:, 0],
             backward_path[:, 1],
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
             clip_on=False,
@@ -511,6 +591,7 @@ def plot_trajectory(
         forward_line = ax.plot(
             forward_solution[:, 0],
             forward_solution[:, 1],
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
             clip_on=False,
@@ -518,6 +599,7 @@ def plot_trajectory(
         backward_line = ax.plot(
             backward_solution[:, 0],
             backward_solution[:, 1],
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
             clip_on=False,
@@ -545,7 +627,7 @@ def plot_trajectory(
             forward_solution[:, 0],
             forward_solution[:, 1],
             forward_solution[:, 2],
-            linewidth=0.8,
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
         )
@@ -553,7 +635,7 @@ def plot_trajectory(
             backward_solution[:, 0],
             backward_solution[:, 1],
             backward_solution[:, 2],
-            linewidth=0.8,
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
         )
@@ -586,7 +668,7 @@ def plot_trajectory(
             forward_path[:, 0],
             forward_path[:, 1],
             forward_path[:, 2],
-            linewidth=0.8,
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
         )
@@ -594,7 +676,7 @@ def plot_trajectory(
             backward_path[:, 0],
             backward_path[:, 1],
             backward_path[:, 2],
-            linewidth=0.8,
+            linewidth=trajectory_linewidth,
             color=line_color,
             zorder=zorder,
         )
@@ -885,11 +967,16 @@ def phase_portrait(
     vector_width=DEFAULT_PLOT_STYLE["vector_width"],
     vector_zorder=DEFAULT_PLOT_STYLE["vector_zorder"],
     vector_normalize=DEFAULT_PLOT_STYLE["vector_normalize"],
+    show_faces=DEFAULT_PLOT_STYLE["show_faces"],
+    face_colors=DEFAULT_PLOT_STYLE["face_colors"],
+    face_alpha=DEFAULT_PLOT_STYLE["face_alpha"],
+    face_zorder=DEFAULT_PLOT_STYLE["face_zorder"],
     show_trajectories=DEFAULT_PLOT_STYLE["show_trajectories"],
     trajectory_step=DEFAULT_PLOT_STYLE["trajectory_step"],
     trajectory_arrows=None,
     tmax=DEFAULT_PLOT_STYLE["tmax"],
     trajectory_color=DEFAULT_PLOT_STYLE["trajectory_color"],
+    trajectory_linewidth=DEFAULT_PLOT_STYLE["trajectory_linewidth"],
     arrow_size=DEFAULT_PLOT_STYLE["arrow_size"],
     arrow_width=DEFAULT_PLOT_STYLE["arrow_width"],
     trajectory_zorder=DEFAULT_PLOT_STYLE["trajectory_zorder"],
@@ -984,6 +1071,17 @@ def phase_portrait(
         If True, vector-field arrows show direction only and are rescaled to a
         common length. If False, arrow lengths reflect the magnitude of the
         vector field.
+    show_faces : bool, default=False
+        Whether to color the faces of 3D state spaces. Only affects 2P4S
+        tetrahedra and 3P2S cubes.
+    face_colors : matplotlib color, list of colors, or None, optional
+        Face colors used when `show_faces=True`. If None, pyNamo uses a soft
+        default palette. A single color applies to every face. A list must have
+        four colors for 2P4S games or six colors for 3P2S games.
+    face_alpha : float, default=0.15
+        Transparency of colored 3D faces.
+    face_zorder : float, default=0
+        Drawing order of colored 3D faces.
     show_trajectories : bool, default=True
         Whether to draw trajectories.
     trajectory_step : float, default=0.02
@@ -1000,6 +1098,11 @@ def phase_portrait(
         Color of trajectories. A single color applies to all trajectories. A
         list assigns one color per trajectory and must have the same length as
         `starts`.
+    trajectory_linewidth : float, default=0.8
+        Width of trajectory lines. The same value is used for the forward and
+        backward trajectories integrated from each initial condition. Increase
+        this for denser or publication figures; decrease it when combining many
+        trajectories with speed or vector fields.
     arrow_size : float, default=0.04
         Size of trajectory direction markers. In 2D this controls the length of
         the custom polygon arrow head. In 3D this controls the length of the
@@ -1057,6 +1160,15 @@ def phase_portrait(
 
     fig, ax = _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim)
 
+    if show_faces and game_class in ("2P4S", "3P2S"):
+        draw_3d_faces(
+            payoff_data,
+            ax,
+            face_colors=face_colors,
+            alpha=face_alpha,
+            zorder=face_zorder,
+        )
+
     draw_state_space(labels, payoff_data, ax, simplex_font_size, simplex_zorder)
     _set_default_axes_style(ax, game_class, labels, player_strategy_labels, player_labels)
     _apply_axis_label_overrides(ax, xlabel, ylabel, zlabel)
@@ -1113,6 +1225,7 @@ def phase_portrait(
                 fig=fig,
                 ax=ax,
                 trajectory_color=color,
+                trajectory_linewidth=trajectory_linewidth,
                 arrow_size=arrow_size,
                 arrow_width=arrow_width,
                 zorder=trajectory_zorder,

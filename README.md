@@ -118,11 +118,11 @@ means probabilities of the first, second, and third entries in
 
 For asymmetric 2-strategy games, each coordinate is the probability that the
 corresponding player uses their first listed strategy. For example, if
-`player_strategy_labels=[["Fight", "Flee"], ["Aggressive", "Cautious"]]`, then
+`player_strategy_labels=[["Stag", "Hare"], ["Stag", "Hare"]]`, then
 `Position = [0.7, 0.4]` means:
 
-- Prey: `Pr(Fight) = 0.7`
-- Predator: `Pr(Aggressive) = 0.4`
+- Player 1: `Pr(Stag) = 0.7`
+- Player 2: `Pr(Stag) = 0.4`
 
 For quick access to static equilibrium concepts:
 

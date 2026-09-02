@@ -165,22 +165,6 @@ def _repeated_pd_tft_allc_alld(b=4.0, c=1.0, w=0.5):
     )
 
 
-def _predator_prey_prey_payoffs():
-    """Prey payoffs for the predator-prey behavioral-conflict example."""
-    return np.array(
-        [[0.0, 3.0], [2.0, 1.0]],
-        dtype=float,
-    )
-
-
-def _predator_prey_predator_payoffs():
-    """Predator payoffs for the predator-prey behavioral-conflict example."""
-    return np.array(
-        [[4.0, 1.0], [3.0, 0.0]],
-        dtype=float,
-    )
-
-
 def _ownership_game(v=2.0, c=3.0):
     """Maynard Smith-Parker ownership game with Hawk, Dove, Bourgeois, Anti-Bourgeois."""
     return np.array(
@@ -256,21 +240,21 @@ games = GameCatalog(
             strategy_labels=["B", "S"],
             symmetric=False,
         ),
-        "predator_prey_behavioral_conflict": Game(
-            "Predator-Prey Behavioral Conflict",
+        "stag_hunt": Game(
+            "Stag Hunt",
             (
-                _predator_prey_prey_payoffs(),
-                _predator_prey_predator_payoffs(),
+                np.array([[4.0, 0.0], [3.0, 3.0]]),
+                np.array([[4.0, 0.0], [3.0, 3.0]]),
             ),
-            strategy_labels=["Fight", "Flee"],
+            strategy_labels=["Stag", "Hare"],
             player_strategy_labels=[
-                ["Fight", "Flee"],
-                ["Aggressive", "Cautious"],
+                ["Stag", "Hare"],
+                ["Stag", "Hare"],
             ],
-            player_labels=["Prey", "Predator"],
+            player_labels=["Player 1", "Player 2"],
             description=(
-                "Two-population predator-prey trait-frequency model. Prey fight "
-                "or flee; predators are aggressive or cautious."
+                "Standard two-population Stag Hunt with payoff-dominant and "
+                "risk-dominant conventions."
             ),
             symmetric=False,
         ),
