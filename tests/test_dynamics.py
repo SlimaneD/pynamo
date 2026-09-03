@@ -21,7 +21,7 @@ def test_replicator_2p3s_shape():
 
 
 def test_replicator_2p4s_shape():
-    payoff_data = examples.games.hofbauer_swinkels.payoff_data
+    payoff_data = examples.games.rps_with_twin.payoff_data
     vector = dynamics.replicator_2p4s([0.2, 0.3, 0.1], 0, payoff_data)
 
     assert np.asarray(vector).shape == (3,)

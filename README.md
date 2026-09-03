@@ -1,83 +1,171 @@
-# pyNamo
+# pyNamo-EGT
 
-Tools for plotting and analyzing replicator dynamics of evolutionary games. The
-project draws phase portraits on simplices, highlights equilibria, and ships a
-small catalogue of example games to try immediately.
+pyNamo-EGT is a small Python package for plotting and analyzing replicator dynamics
+in evolutionary games. It draws phase portraits on simplices, plots trajectories,
+speed fields and vector fields, and reports equilibrium/stability information for
+low-dimensional games.
+
+The package is designed for research notebooks and teaching: the basic interface
+is intentionally short, while lower-level plotting functions remain available for
+custom figures.
 
 ## Features
 
-- Replicator dynamics for asymmetric 2-player/2-strategy, symmetric 2-player/3-strategy, symmetric 2-player/4-strategy, and asymmetric 3-player/2-strategy games.
-- Preloaded game catalogue with attribute lookup and string lookup.
-- Matplotlib plots of trajectories, equilibria, speed fields, and vector fields on the appropriate simplex.
-- Equilibrium tables with stability status, Nash, strict Nash, ESS where applicable, eigenvalues, and eigenvectors.
-- Optional Jupyter widgets to explore trajectories interactively without touching code.
+- Replicator dynamics for `2P2S`, `2P3S`, `2P4S`, and `3P2S` games.
+- A curated catalogue of built-in examples with descriptions, references, parameter notes, and explanations of what each example illustrates.
+- Matplotlib phase portraits with trajectories, equilibria, speed fields, vector fields, and optional colored faces for 3D state spaces.
+- Equilibrium analysis with linear stability classification, Nash equilibria, strict Nash equilibria, and ESS checks where applicable.
+- A Jupyter widget for quick exploration of built-in examples.
 
 ## Requirements
 
 - Python 3.9+
 - `numpy`, `scipy`, `matplotlib`, `sympy`, `pandas`
-- Optional for notebooks: `jupyter`/`ipykernel`, `ipywidgets`
+- Optional for notebooks/widgets: `jupyter`, `ipykernel`, `ipywidgets`, `ipympl`
 
-Install the dependencies in a virtual environment:
+Install dependencies in a virtual environment:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install numpy scipy matplotlib sympy pandas ipywidgets
+pip install numpy scipy matplotlib sympy pandas ipywidgets ipympl
+```
+
+## Installation
+
+From the repository root:
+
+```bash
+pip install .
+```
+
+For notebook/widget support:
+
+```bash
+pip install ".[notebook]"
 ```
 
 For development tests:
 
 ```bash
-pip install pytest
+pip install ".[dev]"
 python -m pytest -q
 ```
 
-## Interactive notebook widget
+The package distribution name is `pynamo-egt`. The current source files still use flat imports such as `import game`, `import drawer`, and `import examples`.
 
-If you prefer sliders and dropdowns inside a notebook:
-
-```python
-from interactive import launch_replicator_widget
-launch_replicator_widget()
-```
-
-Pick a game family and example, set the time horizon and number of trajectories,
-toggle speed/vector fields, and display payoff data and equilibrium analysis.
-
-## Plotting a Game
-
-The main plotting interface is `drawer.phase_portrait`:
+## Quick Start
 
 ```python
+import matplotlib.pyplot as plt
+
 import drawer
 import examples
 
-game = examples.games.matching_pennies
-fig, ax = drawer.phase_portrait(game)
+fig, ax = drawer.phase_portrait(examples.games.good_rps)
+plt.show()
 ```
 
-You can retrieve built-in games by attribute or by name:
+`drawer.phase_portrait` returns ordinary Matplotlib objects, so figures can be
+modified or saved with standard Matplotlib commands:
 
 ```python
-game = examples.games.battle_of_the_sexes
+fig.savefig("good_rps.svg", bbox_inches="tight")
+fig.savefig("good_rps.pdf", bbox_inches="tight")
+```
+
+## Built-In Examples
+
+Built-in games are available through `examples.games`:
+
+```python
+g = examples.games.battle_of_the_sexes
 same_game = examples.games("battle_of_the_sexes")
 examples.games.by_class("2P2S")
 ```
 
-Override plot parameters directly:
+Each catalogue game carries metadata:
+
+```python
+g = examples.games.chaotic_four_strategy_game
+g.describe()
+```
+
+You can also use the module-level helper:
+
+```python
+examples.describe(g)
+```
+
+The metadata include the game description, reference, parameter values, and the
+main mathematical point illustrated by the example.
+
+## Game Classes
+
+pyNamo currently supports four low-dimensional game classes:
+
+- `2P2S`: 2-player / 2-strategy games, represented by one payoff matrix per player.
+- `2P3S`: symmetric 2-player / 3-strategy games, represented by one `3 x 3` payoff matrix.
+- `2P4S`: symmetric 2-player / 4-strategy games, represented by one `4 x 4` payoff matrix.
+- `3P2S`: 3-player / 2-strategy games, represented by one `2 x 2 x 2` payoff tensor per player.
+
+For asymmetric 2-strategy games, each coordinate in a reduced state is the
+probability that the corresponding player uses their first listed strategy.
+
+For symmetric 3-strategy games, initial conditions use two coordinates and the
+third strategy frequency is inferred. For symmetric 4-strategy games, initial
+conditions use three coordinates and the fourth strategy frequency is inferred.
+
+## Defining Games
+
+A symmetric 3-strategy game:
+
+```python
+import numpy as np
+import game
+
+my_game = game.Game(
+    "My RPS Variant",
+    np.array([
+        [0, -1, 2],
+        [2, 0, -1],
+        [-1, 2, 0],
+    ], dtype=float),
+    strategy_labels=["R", "P", "S"],
+)
+```
+
+An asymmetric 2-player / 2-strategy game:
+
+```python
+my_asymmetric_game = game.Game(
+    "My Asymmetric Game",
+    (
+        np.array([[3, 0], [1, 2]], dtype=float),
+        np.array([[2, 1], [0, 3]], dtype=float),
+    ),
+    player_strategy_labels=[["A", "B"], ["C", "D"]],
+    player_labels=["Player 1", "Player 2"],
+    symmetric=False,
+)
+```
+
+## Plot Customization
+
+Most common plotting options are parameters of `drawer.phase_portrait`:
 
 ```python
 fig, ax = drawer.phase_portrait(
-    game,
-    random_state=1,
-    tmax=60,
-    trajectory_arrows=[],
-    trajectory_color="black",
-    show_vector_field=True,
-    vector_grid=20,
+    examples.games.matching_pennies,
+    starts=[[0.2, 0.7], [0.7, 0.5], [0.9, 0.9]],
+    tmax=40,
+    speed_cmap=plt.cm.cividis,
     speed_levels=20,
-    equilibrium_size=100,
+    show_vector_field=True,
+    vector_grid=18,
+    trajectory_color="black",
+    trajectory_linewidth=0.8,
+    trajectory_arrows=[0.001],
 )
 ```
 
@@ -93,70 +181,99 @@ fig, ax = drawer.phase_portrait(
 )
 ```
 
+Colored faces are available for 3D state spaces:
+
+```python
+fig, ax = drawer.phase_portrait(
+    examples.games.ownership_game,
+    show_faces=True,
+    face_alpha=0.15,
+)
+```
+
 Vector fields are available for both 2D and 3D game classes. Sparse 3D vector
-fields can be useful for exploration, but they are often hard to read in static
-figures; trajectories are usually clearer for publication graphics.
+fields can be useful for exploration, but trajectories are usually clearer in
+static publication figures.
 
-## Equilibrium Analysis Table
+For the full parameter documentation:
 
-For notebooks, use `analysis.equilibrium_table` to inspect isolated equilibria without plotting:
+```python
+help(drawer.phase_portrait)
+```
+
+## Equilibrium Analysis
+
+For notebooks, use `analysis.equilibrium_table`:
 
 ```python
 import analysis
-import examples
 
-game = examples.games.good_rps
-analysis.equilibrium_table(game)
+analysis.equilibrium_table(examples.games.good_rps)
 ```
 
-If you do not want to depend on `pandas`, use `analysis.analyze_equilibria(game).to_rows()`.
+For programmatic use:
 
-Position vectors follow the order in which strategies are supplied when the
-game is defined. For symmetric 2-player games, `Position = [0.2, 0.3, 0.5]`
-means probabilities of the first, second, and third entries in
-`strategy_labels`.
-
-For asymmetric 2-strategy games, each coordinate is the probability that the
-corresponding player uses their first listed strategy. For example, if
-`player_strategy_labels=[["Stag", "Hare"], ["Stag", "Hare"]]`, then
-`Position = [0.7, 0.4]` means:
-
-- Player 1: `Pr(Stag) = 0.7`
-- Player 2: `Pr(Stag) = 0.4`
+```python
+result = analysis.analyze_equilibria(examples.games.good_rps)
+rows = result.to_rows()
+```
 
 For quick access to static equilibrium concepts:
 
 ```python
-analysis.find_nash(game)
-analysis.find_strict_nash(game)
-analysis.find_ess(game)
+analysis.find_nash(examples.games.good_rps)
+analysis.find_strict_nash(examples.games.good_rps)
+analysis.find_ess(examples.games.good_rps)
 ```
 
 `find_ess` returns ESS only for symmetric games.
 
-## Equilibrium Classification Caveats
+## Stability Caveats
 
-Stability is classified from the linearization restricted to admissible
-directions in the simplex. This matters at boundaries because outward
-perturbations are not valid evolutionary deviations.
+Stability is classified from the linearization restricted to admissible directions
+in the state space. This is important at boundaries because outward perturbations
+are not valid evolutionary deviations.
 
 Some equilibria are non-hyperbolic or belong to degenerate equilibrium sets. In
-these cases pyNamo emits warnings rather than pretending to prove more than it
-has. Non-isolated equilibrium manifolds are not plotted automatically; isolated
-equilibria are still shown when they can be identified.
+these cases pyNamo emits warnings rather than forcing a classification. Non-isolated
+equilibrium manifolds are not plotted automatically; isolated equilibria are still
+shown when they can be identified.
 
-The category `unstable` means linearization proves the equilibrium is not
+The category `unstable` means that linearization proves the equilibrium is not
 stable, but does not always distinguish source from saddle. In plots, unstable
 equilibria are drawn with the source color for visual compatibility.
 
-## Useful files
+## Interactive Widget
 
-- `game.py` – core `Game` class and game-class inference.
-- `examples.py` – catalogue of predefined games.
-- `dynamics.py` – replicator vector fields and rest-point computation.
-- `analysis.py` – structured equilibrium analysis tables.
-- `drawer.py` – plotting helpers and the high-level `phase_portrait` interface.
-- `interactive.py` – Jupyter widget front-end.
+In a notebook, use:
 
-Provide new payoff matrices directly with `game.Game`, or add curated examples
-in `examples.py`.
+```python
+%matplotlib widget
+
+from interactive import launch_replicator_widget
+launch_replicator_widget()
+```
+
+The widget lets users choose a game class and example, adjust trajectories, toggle
+speed/vector fields, and inspect payoff data and equilibrium analysis.
+
+If 3D rotation does not work, make sure the notebook kernel has `ipympl` installed
+and that `%matplotlib widget` has been evaluated.
+
+## Repository Structure
+
+- `game.py`: core `Game` class and game-class inference.
+- `examples.py`: curated catalogue of predefined games.
+- `dynamics.py`: replicator vector fields and rest-point computation.
+- `analysis.py`: equilibrium and stability analysis.
+- `drawer.py`: plotting helpers and `phase_portrait`.
+- `interactive.py`: Jupyter widget front-end.
+- `tutorial.ipynb`: notebook tutorial.
+- `tests/`: pytest test suite.
+
+## References
+
+The built-in examples draw on standard evolutionary game theory references,
+especially Sandholm (2010), McElreath and Boyd (2007), Maynard Smith and Price
+(1973), Maynard Smith and Parker (1976), Skyrms (2004), and related work cited in
+the example metadata.

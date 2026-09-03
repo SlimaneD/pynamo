@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use pyNamo-EGT in research or teaching, please cite it using this metadata."
+title: "pyNamo-EGT: Replicator Dynamics for Evolutionary Games in Python"
+version: 0.1.0
+date-released: 2026-09-03
+authors:
+  - family-names: Dridi
+    given-names: Slimane
+  - family-names: Giraudon
+    given-names: Benjamin
+repository-code: "https://github.com/SlimaneD/pynamo"
+license: MIT
+keywords:
+  - evolutionary game theory
+  - replicator dynamics
+  - population games
+  - dynamical systems
+  - scientific visualization

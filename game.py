@@ -19,6 +19,7 @@ __all__ = [
     "PayoffMatrix",
     "PayoffCollection",
     "RawPayoffData",
+    "format_game_description",
     "game_names",
     "infer_game_class",
 ]
@@ -41,6 +42,10 @@ class Game:
         player_strategy_labels: Optional[Sequence[Sequence[str]]] = None,
         player_labels: Optional[Sequence[str]] = None,
         description: str = "",
+        reference: str = "",
+        reference_note: str = "",
+        parameters: str = "",
+        illustrates: str = "",
         symmetric: Optional[bool] = None,
     ) -> None:
         """Create a normal-form game supported by pyNamo.
@@ -83,6 +88,19 @@ class Game:
         description : str, default=""
             Optional longer description of the game. Used by example catalogues
             and documentation-facing interfaces.
+        reference : str, default=""
+            Bibliographic source or conventional reference for catalogue
+            examples. Empty for user-defined games unless supplied.
+        reference_note : str, default=""
+            Short clarification about the reference, for example whether the
+            implemented payoff matrix is an exact source matrix, a parameter
+            choice from a family, or a pedagogical variant.
+        parameters : str, default=""
+            Human-readable description of parameter values used to construct a
+            catalogue example.
+        illustrates : str, default=""
+            Short statement of the mathematical or pedagogical point illustrated
+            by the game.
         symmetric : bool or None, optional
             Whether the game is symmetric. If None, pyNamo infers symmetry from
             the payoff representation: one matrix means symmetric, a tuple of
@@ -125,6 +143,10 @@ class Game:
         """
         self.name = name
         self.description = description
+        self.reference = reference
+        self.reference_note = reference_note
+        self.parameters = parameters
+        self.illustrates = illustrates
         self.strategy_labels: List[str] = list(strategy_labels or [])
         self.player_strategy_labels: List[List[str]] = [
             list(labels) for labels in (player_strategy_labels or [])
@@ -156,6 +178,20 @@ class Game:
     def game_class(self) -> str:
         """Return the currently supported pyNamo game class identifier."""
         return infer_game_class(self._payoff)
+
+    def describe(self) -> None:
+        """Print a readable summary of the game and its metadata.
+
+        The method is meant for quick inspection in notebooks and interactive
+        sessions. Bibliographic metadata are optional, so empty fields are
+        skipped.
+
+        Examples
+        --------
+        >>> import examples
+        >>> examples.games.good_rps.describe()
+        """
+        print(format_game_description(self))
 
     def payoff_for_player(self, player: int = 0) -> PayoffMatrix:
         """Return the payoff matrix relevant for the requested player."""
@@ -311,6 +347,46 @@ class Game:
 def game_names(games: Iterable[Tuple[int, Game]]) -> dict:
     """Return a simple id->name mapping derived from a catalogue of games."""
     return {idx: game.name for idx, game in games}
+
+
+def format_game_description(game: Game) -> str:
+    """Return a readable plain-text summary of a game and its metadata."""
+    lines = [
+        game.name,
+        "-" * len(game.name),
+        f"Game class: {game.game_class}",
+        f"Symmetric: {game.symmetric}",
+    ]
+
+    optional_sections = [
+        ("Description", game.description),
+        ("Illustrates", game.illustrates),
+        ("Parameters", game.parameters),
+        ("Reference", game.reference),
+        ("Reference note", game.reference_note),
+    ]
+    for label, value in optional_sections:
+        if value:
+            lines.extend(["", f"{label}:", value])
+
+    lines.extend(
+        [
+            "",
+            "Strategy labels:",
+            str(game.strategy_labels),
+            "",
+            "Player strategy labels:",
+            str(game.player_strategy_labels),
+            "",
+            "Player labels:",
+            str(game.player_labels),
+            "",
+            "Payoff data:",
+            str(game.payoff_data),
+        ]
+    )
+
+    return "\n".join(lines)
 
 
 def infer_game_class(game) -> str:

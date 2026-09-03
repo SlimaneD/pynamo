@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pynamo-egt"
+version = "0.1.0"
+description = "pyNamo-EGT: plotting and analysis tools for replicator dynamics in evolutionary games."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Slimane Dridi" },
+    { name = "Benjamin Giraudon" },
+]
+dependencies = [
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "scipy",
+    "sympy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel",
+    "ipympl",
+    "ipywidgets",
+    "jupyter",
+]
+dev = [
+    "pytest",
+]
+
+[project.urls]
+Repository = "https://github.com/SlimaneD/pynamo"
+Issues = "https://github.com/SlimaneD/pynamo/issues"
+
+[tool.setuptools]
+py-modules = [
+    "analysis",
+    "drawer",
+    "dynamics",
+    "examples",
+    "game",
+    "interactive",
+]
