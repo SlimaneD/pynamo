@@ -33,9 +33,12 @@ pip install numpy scipy matplotlib sympy pandas ipywidgets ipympl
 
 ## Installation
 
-From the repository root:
+pyNamo-EGT is currently distributed from GitHub. To install it in a clean
+environment:
 
 ```bash
+git clone https://github.com/SlimaneD/pynamo.git
+cd pynamo
 pip install .
 ```
 
@@ -43,6 +46,22 @@ For notebook/widget support:
 
 ```bash
 pip install ".[notebook]"
+```
+
+In a notebook, enable the interactive Matplotlib backend before launching the
+widget:
+
+```python
+%matplotlib widget
+
+import interactive
+interactive.launch_replicator_widget()
+```
+
+If `pynamo-egt` is later published on PyPI, installation will become:
+
+```bash
+pip install pynamo-egt
 ```
 
 For development tests:
