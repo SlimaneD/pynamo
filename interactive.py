@@ -57,7 +57,7 @@ def _plot(
     seed: int,
     show_speed: bool,
     show_vector_field: bool,
-    num_arrows: int,
+    show_trajectory_arrow: bool,
     show_equilibria: bool,
 ):
     game = examples.games(example_name)
@@ -70,7 +70,7 @@ def _plot(
         fig=fig,
         starts=starts,
         tmax=tmax,
-        trajectory_arrows=_arrow_positions(num_arrows),
+        trajectory_arrows=[0.001] if show_trajectory_arrow else [],
         trajectory_color="black" if game_key in ("2P3S", "2P2S") else trajectory_color,
         trajectory_linewidth=1.2,
         show_speed=show_speed,
@@ -87,12 +87,6 @@ def _plot(
     )
     ax.set_title(f"{game_key} - {game.name}", pad=18)
     return fig, ax
-
-
-def _arrow_positions(count: int) -> List[float]:
-    if count <= 0:
-        return []
-    return [0.001]
 
 
 def _display_payoff_data(game) -> None:
@@ -409,6 +403,11 @@ def launch_replicator_widget() -> None:
             "ipywidgets is required for this feature"
         ) from _IPYWIDGETS_IMPORT_ERROR
 
+    label_style = {"description_width": "140px"}
+    wide_layout = widgets.Layout(width="720px")
+    control_layout = widgets.Layout(width="420px")
+    checkbox_layout = widgets.Layout(width="260px")
+
     game_dropdown = widgets.Dropdown(
         options=[
             (label, key)
@@ -417,46 +416,75 @@ def launch_replicator_widget() -> None:
         ],
         description="Game",
         value="2P3S",
+        style=label_style,
+        layout=wide_layout,
     )
 
-    example_dropdown = widgets.Dropdown(description="Example")
+    example_dropdown = widgets.Dropdown(
+        description="Example",
+        style=label_style,
+        layout=wide_layout,
+    )
 
     tmax_slider = widgets.FloatSlider(
         value=30,
-        min=5,
+        min=1,
         max=100,
-        step=5,
+        step=1,
         description="tmax",
         continuous_update=False,
+        style=label_style,
+        layout=control_layout,
     )
     traj_slider = widgets.IntSlider(
         value=3,
         min=1,
         max=12,
         step=1,
-        description="# trajectories",
+        description="Number of trajectories",
         continuous_update=False,
+        style=label_style,
+        layout=control_layout,
     )
     seed_slider = widgets.IntSlider(
         value=0,
         min=0,
         max=999,
         step=1,
-        description="Seed",
+        description="Random seed",
         continuous_update=False,
+        style=label_style,
+        layout=control_layout,
     )
-    speed_toggle = widgets.Checkbox(value=True, description="Show speed field")
-    vector_toggle = widgets.Checkbox(value=False, description="Show vector field")
-    eq_toggle = widgets.Checkbox(value=True, description="Show equilibria")
-    payoff_toggle = widgets.Checkbox(value=True, description="Show payoff data")
-    analysis_toggle = widgets.Checkbox(value=True, description="Show analysis table")
-    arrow_slider = widgets.IntSlider(
-        value=1,
-        min=0,
-        max=1,
-        step=1,
-        description="# arrows",
-        continuous_update=False,
+    speed_toggle = widgets.Checkbox(
+        value=True,
+        description="Show speed field",
+        layout=checkbox_layout,
+    )
+    vector_toggle = widgets.Checkbox(
+        value=False,
+        description="Show vector field",
+        layout=checkbox_layout,
+    )
+    eq_toggle = widgets.Checkbox(
+        value=True,
+        description="Show equilibria",
+        layout=checkbox_layout,
+    )
+    payoff_toggle = widgets.Checkbox(
+        value=True,
+        description="Show payoff data",
+        layout=checkbox_layout,
+    )
+    analysis_toggle = widgets.Checkbox(
+        value=True,
+        description="Show analysis table",
+        layout=checkbox_layout,
+    )
+    arrow_toggle = widgets.Checkbox(
+        value=True,
+        description="Show trajectory arrow",
+        layout=checkbox_layout,
     )
 
     updating_examples = False
@@ -481,9 +509,9 @@ def launch_replicator_widget() -> None:
             game_dropdown,
             example_dropdown,
             widgets.HBox([traj_slider, tmax_slider]),
-            widgets.HBox([seed_slider, arrow_slider]),
+            seed_slider,
             widgets.HBox([speed_toggle, vector_toggle, eq_toggle]),
-            widgets.HBox([payoff_toggle, analysis_toggle]),
+            widgets.HBox([arrow_toggle, payoff_toggle, analysis_toggle]),
         ]
     )
 
@@ -509,7 +537,7 @@ def launch_replicator_widget() -> None:
             eq_toggle.value,
             payoff_toggle.value,
             analysis_toggle.value,
-            arrow_slider.value,
+            arrow_toggle.value,
         )
         if render_state == last_render_state:
             return
@@ -540,7 +568,7 @@ def launch_replicator_widget() -> None:
                     seed=seed_slider.value,
                     show_speed=speed_toggle.value,
                     show_vector_field=vector_toggle.value,
-                    num_arrows=arrow_slider.value,
+                    show_trajectory_arrow=arrow_toggle.value,
                     show_equilibria=eq_toggle.value,
                 )
 
@@ -564,7 +592,7 @@ def launch_replicator_widget() -> None:
         traj_slider,
         tmax_slider,
         seed_slider,
-        arrow_slider,
+        arrow_toggle,
         speed_toggle,
         vector_toggle,
         eq_toggle,

@@ -36,7 +36,7 @@ class Game:
     def __init__(
         self,
         name: str,
-        payoff_matrices: RawPayoffData,
+        payoffs: RawPayoffData,
         *,
         strategy_labels: Optional[Sequence[str]] = None,
         player_strategy_labels: Optional[Sequence[Sequence[str]]] = None,
@@ -55,11 +55,11 @@ class Game:
         name : str
             Human-readable name of the game. Used in plot titles and example
             displays.
-        payoff_matrices : array-like or tuple of array-like
+        payoffs : array-like or tuple of array-like
             Payoff data defining the game.
 
             For symmetric 2-player games, pass one square payoff matrix. Entry
-            `payoff_matrices[i, j]` is the payoff to a player using strategy i
+            `payoffs[i, j]` is the payoff to a player using strategy i
             against an opponent using strategy j.
 
             For asymmetric 2-player / 2-strategy games, pass a tuple
@@ -152,7 +152,7 @@ class Game:
             list(labels) for labels in (player_strategy_labels or [])
         ]
         self.player_labels: List[str] = list(player_labels or [])
-        self._payoff = self._normalize_payoff(payoff_matrices)
+        self._payoff = self._normalize_payoff(payoffs)
 
         inferred_symmetry = not isinstance(self._payoff, tuple)
         if symmetric is None:
@@ -258,19 +258,19 @@ class Game:
         return payoffs
 
     def _normalize_payoff(
-        self, payoff_matrices: RawPayoffData
+        self, payoffs: RawPayoffData
     ) -> Union[PayoffMatrix, PayoffCollection]:
-        if isinstance(payoff_matrices, tuple):
-            matrices = tuple(self._to_numpy(matrix) for matrix in payoff_matrices)
+        if isinstance(payoffs, tuple):
+            matrices = tuple(self._to_numpy(matrix) for matrix in payoffs)
             return matrices  # type: ignore[return-value]
-        if isinstance(payoff_matrices, list) and payoff_matrices and isinstance(
-            payoff_matrices[0], np.ndarray
+        if isinstance(payoffs, list) and payoffs and isinstance(
+            payoffs[0], np.ndarray
         ):
-            matrices_tuple = tuple(self._to_numpy(matrix) for matrix in payoff_matrices)  # type: ignore[arg-type]
+            matrices_tuple = tuple(self._to_numpy(matrix) for matrix in payoffs)  # type: ignore[arg-type]
             if len(matrices_tuple) == 1:
                 return matrices_tuple[0]
             return matrices_tuple  # type: ignore[return-value]
-        return self._to_numpy(payoff_matrices)  # type: ignore[arg-type]
+        return self._to_numpy(payoffs)  # type: ignore[arg-type]
 
     def _to_numpy(self, matrix: Union[PayoffMatrix, Sequence[Sequence[float]]]) -> PayoffMatrix:
         arr = np.asarray(matrix, dtype=float)

@@ -400,13 +400,13 @@ def _symmetric_nash_status(strategy, payoff_matrix, tol: float):
     return _mixed_strategy_best_response_status([p], [payoff_data], tol)
 
 
-def _asymmetric_2p2s_nash_status(reduced, payoff_matrices, tol: float):
+def _asymmetric_2p2s_nash_status(reduced, payoffs, tol: float):
     x_prob_action_0, y_prob_action_0 = np.asarray(reduced, dtype=float)
     p0 = np.array([x_prob_action_0, 1.0 - x_prob_action_0])
     p1 = np.array([y_prob_action_0, 1.0 - y_prob_action_0])
 
-    payoff_player_0 = payoff_matrices[0] @ p1
-    payoff_player_1 = payoff_matrices[1] @ p0
+    payoff_player_0 = payoffs[0] @ p1
+    payoff_player_1 = payoffs[1] @ p0
     return _mixed_strategy_best_response_status(
         [p0, p1], [payoff_player_0, payoff_player_1], tol
     )
@@ -651,12 +651,34 @@ def _admissible_direction_candidates(point, game_class):
 
 def _direction_in_span(direction, basis, tol):
     direction = np.asarray(direction, dtype=float)
-    basis = np.asarray(basis, dtype=float)
+    basis = _real_direction_basis(basis, tol)
     if basis.size == 0:
         return False
     coeffs, *_ = np.linalg.lstsq(basis, direction, rcond=None)
     projection = basis @ coeffs
     return np.linalg.norm(projection - direction) <= tol
+
+
+def _real_direction_basis(basis, tol):
+    """Convert real or complex eigenvectors into real admissible directions."""
+    basis = np.asarray(basis)
+    if basis.size == 0:
+        return np.empty((basis.shape[0], 0), dtype=float)
+
+    columns = []
+    for idx in range(basis.shape[1]):
+        vector = basis[:, idx]
+        real_part = np.real(vector)
+        imag_part = np.imag(vector)
+
+        if np.linalg.norm(real_part) > tol:
+            columns.append(real_part)
+        if np.linalg.norm(imag_part) > tol:
+            columns.append(imag_part)
+
+    if not columns:
+        return np.empty((basis.shape[0], 0), dtype=float)
+    return np.column_stack(columns).astype(float)
 
 
 def _is_redundant_direction(direction, vectors, tol):
@@ -748,7 +770,7 @@ def _equilibrium_to_row(equilibrium: AnalyzedEquilibrium, ndigits: int) -> dict:
         "Position": _format_array(equilibrium.full_position, ndigits),
         "Stability Status": equilibrium.stability,
         "Nash": equilibrium.nash,
-        "ESS": equilibrium.ess,
+        "ESS": "NA" if equilibrium.ess is None else equilibrium.ess,
         "Strict Nash": equilibrium.strict_nash,
         "Eigenvalues": _format_array(equilibrium.admissible_eigenvalues, ndigits),
         "Eigenvectors": _format_matrix(equilibrium.admissible_eigenvectors, ndigits),

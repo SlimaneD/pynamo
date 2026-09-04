@@ -125,8 +125,8 @@ import numpy as np
 import game
 
 my_game = game.Game(
-    "My RPS Variant",
-    np.array([
+    name="My RPS Variant",
+    payoffs=np.array([
         [0, -1, 2],
         [2, 0, -1],
         [-1, 2, 0],
@@ -139,8 +139,8 @@ An asymmetric 2-player / 2-strategy game:
 
 ```python
 my_asymmetric_game = game.Game(
-    "My Asymmetric Game",
-    (
+    name="My Asymmetric Game",
+    payoffs=(
         np.array([[3, 0], [1, 2]], dtype=float),
         np.array([[2, 1], [0, 3]], dtype=float),
     ),
@@ -194,6 +194,11 @@ fig, ax = drawer.phase_portrait(
 Vector fields are available for both 2D and 3D game classes. Sparse 3D vector
 fields can be useful for exploration, but trajectories are usually clearer in
 static publication figures.
+
+Labels are Matplotlib text labels and can include simple LaTeX-style math
+notation such as `"$S_1$"` or `"$x = P(A)$"`. pyNamo-EGT does not require a
+full LaTeX installation by default; users who want full LaTeX rendering can
+enable Matplotlib's `text.usetex` option manually.
 
 For the full parameter documentation:
 

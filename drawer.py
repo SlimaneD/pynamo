@@ -10,8 +10,6 @@ import warnings
 import numpy as np
 from scipy.integrate import odeint
 
-import matplotlib
-matplotlib.rcParams['text.usetex'] = True
 import matplotlib.pyplot as plt
 from matplotlib import colors as mcolors
 from matplotlib.patches import Polygon
@@ -1018,7 +1016,8 @@ def phase_portrait(
         when title text is close to simplex labels.
     starts : list of list of float, optional
         Initial conditions for trajectories. If None, four random initial
-        conditions are generated.
+        conditions are generated. All supplied coordinates must lie between 0
+        and 1.
 
         For 2P2S games, each start is [x, y], where x is the probability that
         player 1 uses their first listed strategy and y is the probability that
@@ -1029,10 +1028,12 @@ def phase_portrait(
         strategy.
 
         For 2P3S games, each start is [x1, x2], the first two coordinates of
-        the population state. The third coordinate is 1 - x1 - x2.
+        the population state. The third coordinate is 1 - x1 - x2, so starts
+        must also satisfy x1 + x2 <= 1.
 
         For 2P4S games, each start is [x1, x2, x3], the first three coordinates
-        of the population state. The fourth coordinate is 1 - x1 - x2 - x3.
+        of the population state. The fourth coordinate is 1 - x1 - x2 - x3, so
+        starts must also satisfy x1 + x2 + x3 <= 1.
     random_state : int or None, optional
         Seed used when `starts` is None.
     simplex_font_size : float, default=13
@@ -1099,8 +1100,7 @@ def phase_portrait(
         list assigns one color per trajectory and must have the same length as
         `starts`.
     trajectory_linewidth : float, default=0.8
-        Width of trajectory lines. The same value is used for the forward and
-        backward trajectories integrated from each initial condition. Increase
+        Width of trajectory lines. Increase
         this for denser or publication figures; decrease it when combining many
         trajectories with speed or vector fields.
     arrow_size : float, default=0.04

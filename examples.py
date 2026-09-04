@@ -270,8 +270,8 @@ games = GameCatalog(
             illustrates="Interior center and cycling behavior in asymmetric two-population dynamics.",
             symmetric=False,
         ),
-        "two_player_hawk_dove": Game(
-            "2-player Hawk-Dove",
+        "hawk_dove": Game(
+            "Hawk-Dove",
             (
                 np.array([[-1, 5], [0, 2.5]]),
                 np.array([[-1, 5], [0, 2.5]]),
@@ -340,6 +340,38 @@ games = GameCatalog(
             reference_note="Standard RPS with an exact duplicate of Scissors.",
             parameters="standard RPS payoffs with strategy T an exact twin of S.",
             illustrates="Invariant planes and neutral directions created by duplicate strategies.",
+        ),
+        "rps_with_plasticity": Game(
+            "Good RPS with Plasticity",
+            np.array(
+                [
+                    [0, -1, 2, -1],
+                    [2, 0, -1, -1],
+                    [-1, 2, 0, -1],
+                    [2, 2, 2, 0],
+                ],
+                dtype=float,
+            ),
+            strategy_labels=["$R$", "$P$", "$S$", "$p$"],
+            description=(
+                "Good Rock-Paper-Scissors with an added plastic type that "
+                "conditions its action on the opponent's type."
+            ),
+            reference="Dridi (2019), Plasticity in evolutionary games, bioRxiv 509604.",
+            reference_note=(
+                "The bioRxiv preprint presents the plasticity-in-games framework. "
+                "This costless RPS+plasticity example is from a later manuscript "
+                "version, not from the bioRxiv version."
+            ),
+            parameters=(
+                "Good RPS payoffs with a = 2 and b = 1. A plastic type uses "
+                "response z_i against opponent type i: z_R = P, z_P = S, "
+                "z_S = R, and z_p = R."
+            ),
+            illustrates=(
+                "How a type-conditioned plastic strategy can reshape the "
+                "replicator dynamics of good RPS in a four-strategy simplex."
+            ),
         ),
         "chaotic_four_strategy_game": Game(
             "Chaotic Four-Strategy Game",

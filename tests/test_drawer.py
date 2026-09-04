@@ -41,7 +41,7 @@ def test_phase_portrait_accepts_one_color_per_trajectory():
 
 
 def test_plot_vector_field_only():
-    g = examples.games.two_player_hawk_dove
+    g = examples.games.hawk_dove
     fig, ax = drawer.phase_portrait(
         g,
         show_trajectories=False,
