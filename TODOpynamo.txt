@@ -1,2 +1,0 @@
-- Simplify fast plotting of a game with a standard function that draws everything: simplex, trajectories, simple option to choose whether to plot the speed contours, simple option to choose whether to plot equilibria.
-- Do as much as possible so that people can later define other dynamics than the replicator dynamics. 

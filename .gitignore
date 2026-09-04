@@ -25,3 +25,8 @@ dist/
 *.egg-info/
 
 TestingCode.ipynb
+
+# Personal notes
+TODOpynamo.txt
+TODO
+TODO.*
