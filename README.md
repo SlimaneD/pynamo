@@ -1,5 +1,7 @@
 # pyNamo-EGT
 
+[![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/SlimaneD/pynamo/master?filepath=tutorial.ipynb)
+
 pyNamo-EGT is a small Python package for plotting and analyzing replicator dynamics
 in evolutionary games. It draws phase portraits on simplices, plots trajectories,
 speed fields and vector fields, and reports equilibrium/stability information for
@@ -63,6 +65,10 @@ If `pynamo-egt` is later published on PyPI, installation will become:
 ```bash
 pip install pynamo-egt
 ```
+
+To try the tutorial without installing anything locally, use the Binder badge at
+the top of this README. Binder may take a few minutes to build the environment on
+first launch.
 
 For development tests:
 
