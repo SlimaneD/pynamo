@@ -102,7 +102,7 @@ def _display_payoff_data(game) -> None:
         return
 
     if game_class == "3P2S":
-        display(Markdown(f"$$\n{_three_player_payoff_latex(payoff).strip()}\n$$"))
+        display(Math(_three_player_payoff_latex(payoff)))
         return
 
     if isinstance(payoff, np.ndarray):
@@ -140,7 +140,7 @@ def _append_payoff_data(output, game) -> None:
         return
 
     if game_class == "3P2S":
-        output.append_display_data(Markdown(f"$$\n{_three_player_payoff_latex(payoff).strip()}\n$$"))
+        output.append_display_data(Math(_three_player_payoff_latex(payoff)))
         return
 
     if isinstance(payoff, np.ndarray):
@@ -180,7 +180,7 @@ def _payoff_data_output(game) -> dict:
         return _math_output(_bimatrix_payoff_latex(payoff, game.player_strategy_labels))
 
     if game_class == "3P2S":
-        return _markdown_output(f"$$\n{_three_player_payoff_latex(payoff).strip()}\n$$")
+        return _math_output(_three_player_payoff_latex(payoff))
 
     return _markdown_output(f"```\n{payoff}\n```")
 
