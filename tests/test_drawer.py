@@ -54,3 +54,16 @@ def test_plot_vector_field_only():
     assert fig is not None
     assert ax is not None
     plt.close(fig)
+
+
+def test_phase_portrait_accepts_equilibrium_edgecolor():
+    g = examples.games.good_rps
+    fig, ax = drawer.phase_portrait(
+        g,
+        show_trajectories=False,
+        equilibrium_edgecolor="firebrick",
+    )
+
+    assert fig is not None
+    assert ax is not None
+    plt.close(fig)

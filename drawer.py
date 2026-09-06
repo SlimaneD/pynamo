@@ -82,6 +82,7 @@ DEFAULT_PLOT_STYLE = {
     "source_color": "white",
     "center_color": None,
     "equilibrium_size": 80,
+    "equilibrium_edgecolor": "black",
     "equilibrium_zorder": 40,
 }
 
@@ -705,6 +706,7 @@ def plot_equilibria(
     equilibrium_size,
     zorder,
     center_color=None,
+    equilibrium_edgecolor="black",
 ):
     """Classify and plot isolated equilibria.
 
@@ -723,6 +725,10 @@ def plot_equilibria(
         Drawing order of equilibrium markers.
     center_color : matplotlib color or None, optional
         Marker color for centers. If None, centers use `source_color`.
+    equilibrium_edgecolor : matplotlib color or None, default="black"
+        Outline color for 2D equilibrium markers. If None, markers are drawn
+        without outlines. 3D equilibria are drawn as shaded spheres and do not
+        use a separate marker outline.
 
     Returns
     -------
@@ -832,7 +838,7 @@ def plot_equilibria(
                 s=equilibrium_size,
                 color=color,
                 marker=marker,
-                edgecolors='black',
+                edgecolors=equilibrium_edgecolor if equilibrium_edgecolor is not None else "none",
                 alpha=1,
                 zorder=zorder,
                 clip_on=False,
@@ -849,7 +855,7 @@ def plot_equilibria(
                 pts[:, 0], pts[:, 1],
                 s=equilibrium_size,
                 facecolors='none',
-                edgecolors='black',
+                edgecolors=equilibrium_edgecolor if equilibrium_edgecolor is not None else "none",
                 alpha=1,
                 zorder=zorder,
                 clip_on=False,
@@ -984,6 +990,7 @@ def phase_portrait(
     source_color=DEFAULT_PLOT_STYLE["source_color"],
     center_color=DEFAULT_PLOT_STYLE["center_color"],
     equilibrium_size=DEFAULT_PLOT_STYLE["equilibrium_size"],
+    equilibrium_edgecolor=DEFAULT_PLOT_STYLE["equilibrium_edgecolor"],
     equilibrium_zorder=DEFAULT_PLOT_STYLE["equilibrium_zorder"],
 ):
     """Plot replicator dynamics for a supported game.
@@ -1128,6 +1135,10 @@ def phase_portrait(
         Size of equilibrium markers. For 2D plots this is the scatter marker
         size. For 3D plots this determines the radius of the equilibrium
         spheres.
+    equilibrium_edgecolor : matplotlib color or None, default="black"
+        Outline color for 2D equilibrium markers. If None, markers are drawn
+        without outlines. 3D equilibria are drawn as shaded spheres and do not
+        use a separate marker outline.
     equilibrium_zorder : float, default=40
         Drawing order of equilibrium markers.
 
@@ -1209,6 +1220,7 @@ def phase_portrait(
             source_color=source_color,
             center_color=center_color,
             equilibrium_size=equilibrium_size,
+            equilibrium_edgecolor=equilibrium_edgecolor,
             zorder=equilibrium_zorder,
         )
 

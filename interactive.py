@@ -1,6 +1,7 @@
 """Notebook widgets for exploring pyNamo replicator dynamics."""
 from __future__ import annotations
 
+import html as html_lib
 from typing import List
 import warnings
 
@@ -15,7 +16,7 @@ __all__ = ["launch_replicator_widget"]
 
 try:  # pragma: no cover - optional dependency
     import ipywidgets as widgets
-    from IPython.display import Markdown, Math, clear_output, display
+    from IPython.display import HTML, Markdown, Math, clear_output, display
 except ImportError as exc:  # pragma: no cover - optional path
     widgets = None  # type: ignore[assignment]
     _IPYWIDGETS_IMPORT_ERROR = exc
@@ -102,7 +103,9 @@ def _display_payoff_data(game) -> None:
         return
 
     if game_class == "3P2S":
-        display(Math(_three_player_payoff_latex(payoff)))
+        # Use HTML for 3P2S payoff tables because nested LaTeX arrays render
+        # inconsistently across VS Code, Binder, and JupyterLab.
+        display(HTML(_three_player_payoff_html(payoff)))
         return
 
     if isinstance(payoff, np.ndarray):
@@ -140,7 +143,7 @@ def _append_payoff_data(output, game) -> None:
         return
 
     if game_class == "3P2S":
-        output.append_display_data(Math(_three_player_payoff_latex(payoff)))
+        output.append_display_data(HTML(_three_player_payoff_html(payoff)))
         return
 
     if isinstance(payoff, np.ndarray):
@@ -161,7 +164,7 @@ def _info_outputs(game, show_payoff_data: bool, show_analysis_table: bool) -> tu
     outputs = []
     if show_payoff_data:
         outputs.append(_markdown_output("<br><h3>Payoff Data</h3><br>"))
-        outputs.append(_payoff_data_output(game))
+        outputs.extend(_payoff_data_outputs(game))
     if show_analysis_table:
         outputs.append(_markdown_output("<br><h3>Equilibrium And Stability Analysis</h3><br>"))
         rows = analysis.analyze_equilibria(game).to_rows()
@@ -169,26 +172,34 @@ def _info_outputs(game, show_payoff_data: bool, show_analysis_table: bool) -> tu
     return tuple(outputs)
 
 
-def _payoff_data_output(game) -> dict:
+def _payoff_data_outputs(game) -> tuple[dict, ...]:
     payoff = game.payoff_data
     game_class = game.game_class
 
     if game_class in ("2P3S", "2P4S"):
-        return _math_output(_symmetric_payoff_latex(payoff, game.strategy_labels))
+        return (_math_output(_symmetric_payoff_latex(payoff, game.strategy_labels)),)
 
     if game_class == "2P2S":
-        return _math_output(_bimatrix_payoff_latex(payoff, game.player_strategy_labels))
+        return (_math_output(_bimatrix_payoff_latex(payoff, game.player_strategy_labels)),)
 
     if game_class == "3P2S":
-        return _math_output(_three_player_payoff_latex(payoff))
+        return (_html_output(_three_player_payoff_html(payoff)),)
 
-    return _markdown_output(f"```\n{payoff}\n```")
+    return (_markdown_output(f"```\n{payoff}\n```"),)
 
 
 def _markdown_output(markdown: str) -> dict:
     return {
         "output_type": "display_data",
         "data": {"text/markdown": markdown},
+        "metadata": {},
+    }
+
+
+def _html_output(html: str) -> dict:
+    return {
+        "output_type": "display_data",
+        "data": {"text/html": html},
         "metadata": {},
     }
 
@@ -313,29 +324,67 @@ def _bimatrix_payoff_latex(payoff, player_strategy_labels: List[List[str]]) -> s
     return _latex_array("c|cc", rows)
 
 
-def _three_player_payoff_latex(payoff) -> str:
-    matrices = []
+def _three_player_payoff_html(payoff) -> str:
+    tables = []
     for k in range(2):
-        rows = [
-            rf" & \text{{Player 3: {k + 1}}} & \\[0.4em]",
-            r"\hline",
-            r" & \text{Player 2: 1} & \text{Player 2: 2} \\",
-            r"\hline",
-        ]
+        rows = []
         for i in range(2):
-            entries = []
+            cells = []
             for j in range(2):
-                payoff_tuple = ", ".join(_format_payoff(tensor[i, j, k]) for tensor in payoff)
-                entries.append(rf"({payoff_tuple})")
-            rows.append(rf"\text{{Player 1: {i + 1}}} & {entries[0]} & {entries[1]} \\")
-        rows.append(r"\hline")
-        matrices.append(_latex_array("ccc", rows, display_math=False))
+                payoff_tuple = ", ".join(
+                    _format_payoff(tensor[i, j, k]) for tensor in payoff
+                )
+                cells.append(f"({html_lib.escape(payoff_tuple)})")
+            rows.append(
+                f"""
+                <tr>
+                    <th>Player 1: {i + 1}</th>
+                    <td>{cells[0]}</td>
+                    <td>{cells[1]}</td>
+                </tr>
+                """
+            )
 
-    return rf"""
-{matrices[0]}
-\qquad
-{matrices[1]}
-"""
+        tables.append(
+            f"""
+            <div class="pynamo-3p2s-payoff-table" style="display: inline-block; margin-right: 3.5em; vertical-align: top;">
+                <div style="text-align: center; font-weight: 600; margin-bottom: 0.35em;">
+                    Player 3: {k + 1}
+                </div>
+                <table style="border-collapse: collapse; font-size: 1.05em;">
+                    <thead>
+                        <tr>
+                            <th style="border-bottom: 1px solid black; padding: 0.25em 0.7em;"></th>
+                            <th style="border-bottom: 1px solid black; padding: 0.25em 0.7em;">Player 2: 1</th>
+                            <th style="border-bottom: 1px solid black; padding: 0.25em 0.7em;">Player 2: 2</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join(rows)}
+                    </tbody>
+                </table>
+            </div>
+            """
+        )
+
+    return f"""
+    <div style="display: flex; flex-wrap: wrap; gap: 2em; align-items: flex-start;">
+        {''.join(tables)}
+    </div>
+    <style>
+        .pynamo-3p2s-payoff-table th {{
+            font-weight: 500;
+            text-align: right;
+            white-space: nowrap;
+            padding: 0.25em 0.7em;
+        }}
+        .pynamo-3p2s-payoff-table td {{
+            text-align: center;
+            white-space: nowrap;
+            padding: 0.25em 0.7em;
+        }}
+    </style>
+    """
 
 
 def _latex_array(column_spec: str, rows: List[str], display_math: bool = True) -> str:

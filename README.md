@@ -2,26 +2,61 @@
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/SlimaneD/pynamo/master?filepath=tutorial.ipynb)
 
-pyNamo-EGT is a small Python package for plotting and analyzing replicator dynamics
-in evolutionary games. It draws phase portraits on simplices, plots trajectories,
-speed fields and vector fields, and reports equilibrium/stability information for
-low-dimensional games.
+pyNamo-EGT is a Python package for plotting and analyzing replicator dynamics
+in evolutionary games. It focuses on game classes whose state spaces can be
+visualized directly, producing phase portraits on simplices with trajectories,
+speed fields, vector fields, equilibria, and stability information.
 
-The package is designed for research notebooks and teaching: the basic interface
-is intentionally short, while lower-level plotting functions remain available for
-custom figures.
+The package is designed for researchers, teachers, and students who want clear,
+publication-quality diagrams of theoretical phase portraits. Its high-level
+interface is built for Jupyter notebooks and produces informative figures with
+minimal code, while still exposing fine-grained controls for plotting details.
+
+## Start Here
+
+There are three main ways to try pyNamo-EGT.
+
+**1. Full interactive tutorial in Binder**
+
+Use Binder if you want the closest experience to a local Jupyter notebook,
+including the interactive widget and rotatable 3D Matplotlib figures:
+
+[Launch the Binder tutorial](https://mybinder.org/v2/gh/SlimaneD/pynamo/master?filepath=tutorial.ipynb)
+
+Binder runs in the browser and does not require a local installation. First launch
+can take a few minutes while Binder builds the environment.
+
+**2. Faster static tutorial in Google Colab**
+
+Use Colab if you want a faster browser-based preview of the tutorial:
+
+[Open the Colab tutorial](https://colab.research.google.com/github/SlimaneD/pynamo/blob/master/tutorial_colab.ipynb)
+
+The Colab notebook supports ordinary plotting cells, but not the interactive
+widget or rotatable 3D Matplotlib figures.
+
+**3. Local installation from GitHub**
+
+Use a local installation if you want to use pyNamo-EGT in your own notebooks or
+modify the code:
+
+```bash
+git clone https://github.com/SlimaneD/pynamo.git
+cd pynamo
+pip install ".[notebook]"
+```
 
 ## Features
 
-- Replicator dynamics for `2P2S`, `2P3S`, `2P4S`, and `3P2S` games.
-- A curated catalogue of built-in examples with descriptions, references, parameter notes, and explanations of what each example illustrates.
+- Replicator dynamics for asymmetric 2-player / 2-strategy games (`2P2S`), symmetric 2-player / 3-strategy games (`2P3S`), symmetric 2-player / 4-strategy games (`2P4S`), and asymmetric 3-player / 2-strategy games (`3P2S`).
+- A curated catalogue of built-in example games with descriptions, references, parameter notes, and explanations of what each example illustrates.
 - Matplotlib phase portraits with trajectories, equilibria, speed fields, vector fields, and optional colored faces for 3D state spaces.
 - Equilibrium analysis with linear stability classification, Nash equilibria, strict Nash equilibria, and ESS checks where applicable.
-- A Jupyter widget for quick exploration of built-in examples.
+- A Jupyter widget for quick exploration of built-in example games.
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.12+
 - `numpy`, `scipy`, `matplotlib`, `sympy`, `pandas`
 - Optional for notebooks/widgets: `jupyter`, `ipykernel`, `ipywidgets`, `ipympl`
 
@@ -35,40 +70,17 @@ pip install numpy scipy matplotlib sympy pandas ipywidgets ipympl
 
 ## Installation
 
-pyNamo-EGT is currently distributed from GitHub. To install it in a clean
-environment:
-
-```bash
-git clone https://github.com/SlimaneD/pynamo.git
-cd pynamo
-pip install .
-```
-
-For notebook/widget support:
+pyNamo-EGT is currently distributed from GitHub. For ordinary notebook use, install with:
 
 ```bash
 pip install ".[notebook]"
 ```
 
-In a notebook, enable the interactive Matplotlib backend before launching the
-widget:
-
-```python
-%matplotlib widget
-
-import interactive
-interactive.launch_replicator_widget()
-```
-
-If `pynamo-egt` is later published on PyPI, installation will become:
+For core functionality only, without notebook/widget dependencies:
 
 ```bash
-pip install pynamo-egt
+pip install .
 ```
-
-To try the tutorial without installing anything locally, use the Binder badge at
-the top of this README. Binder may take a few minutes to build the environment on
-first launch.
 
 For development tests:
 
@@ -77,9 +89,7 @@ pip install ".[dev]"
 python -m pytest -q
 ```
 
-The package distribution name is `pynamo-egt`. The current source files still use flat imports such as `import game`, `import drawer`, and `import examples`.
-
-## Quick Start
+## First use
 
 ```python
 import matplotlib.pyplot as plt
@@ -127,7 +137,7 @@ main mathematical point illustrated by the example.
 
 ## Game Classes
 
-pyNamo currently supports four low-dimensional game classes:
+pyNamo currently supports four game classes:
 
 - `2P2S`: 2-player / 2-strategy games, represented by one payoff matrix per player.
 - `2P3S`: symmetric 2-player / 3-strategy games, represented by one `3 x 3` payoff matrix.
@@ -300,10 +310,3 @@ and that `%matplotlib widget` has been evaluated.
 - `interactive.py`: Jupyter widget front-end.
 - `tutorial.ipynb`: notebook tutorial.
 - `tests/`: pytest test suite.
-
-## References
-
-The built-in examples draw on standard evolutionary game theory references,
-especially Sandholm (2010), McElreath and Boyd (2007), Maynard Smith and Price
-(1973), Maynard Smith and Parker (1976), Skyrms (2004), and related work cited in
-the example metadata.
