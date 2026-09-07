@@ -1,9 +1,9 @@
 import warnings
 import numpy as np
 import pytest
-import analysis, examples, dynamics
-from game import Game
-from analysis import _ess_on_critical_cone as ess_on_critical_cone
+from pynamo_egt import analysis, examples, dynamics
+from pynamo_egt.game import Game
+from pynamo_egt.analysis import _ess_on_critical_cone as ess_on_critical_cone
 
 
 def analyze(game):
@@ -75,7 +75,7 @@ def test_analysis_does_not_require_pygambit():
         [sys.executable, '-c', '''
 import sys
 sys.modules['pygambit'] = None
-import analysis, examples
+from pynamo_egt import analysis, examples
 result = analysis.analyze_equilibria(examples.games.good_rps)
 assert any(e.nash and e.ess for e in result.equilibria)
 '''],

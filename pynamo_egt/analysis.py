@@ -14,8 +14,8 @@ import numpy as np
 from sympy import Matrix
 from sympy.abc import x, y, z
 
-import dynamics
-from game import infer_game_class
+from . import dynamics
+from .game import infer_game_class
 
 __all__ = [
     "InconclusiveStabilityWarning",
@@ -126,7 +126,7 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
 
     Parameters
     ----------
-    game : game.Game or payoff data
+    game : pn.Game or payoff data
         Game to analyze. Passing a Game object is recommended because it
         preserves labels and metadata. Raw payoff data are also accepted.
 
@@ -221,7 +221,7 @@ def equilibrium_table(game, ndigits: int = 6):
 
     Parameters
     ----------
-    game : game.Game or payoff data
+    game : pn.Game or payoff data
         Game to analyze. Passing a Game object is recommended.
     ndigits : int, default=6
         Number of decimal places used when formatting numeric values.
@@ -252,7 +252,7 @@ def find_nash(game):
 
     Parameters
     ----------
-    game : game.Game or payoff data
+    game : pn.Game or payoff data
         Game to analyze.
 
     Returns
@@ -273,7 +273,7 @@ def find_strict_nash(game):
 
     Parameters
     ----------
-    game : game.Game or payoff data
+    game : pn.Game or payoff data
         Game to analyze.
 
     Returns
@@ -294,7 +294,7 @@ def find_ess(game):
 
     Parameters
     ----------
-    game : game.Game or payoff data
+    game : pn.Game or payoff data
         Game to analyze.
 
     Returns

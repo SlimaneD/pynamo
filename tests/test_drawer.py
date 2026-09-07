@@ -4,10 +4,8 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 
-import drawer
-import examples
-
-
+from pynamo_egt import drawer
+from pynamo_egt import examples
 def test_phase_portrait_runs_for_all_supported_game_classes():
     for game_class in ("2P2S", "2P3S", "2P4S", "3P2S"):
         g = next(iter(examples.games.by_class(game_class).values()))

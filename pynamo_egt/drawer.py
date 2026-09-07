@@ -17,9 +17,9 @@ from matplotlib.collections import PatchCollection
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
-import analysis
-import dynamics
-from game import infer_game_class
+from . import analysis
+from . import dynamics
+from .game import infer_game_class
 
 __all__ = [
     "PlottingWarning",
@@ -1001,7 +1001,7 @@ def phase_portrait(
 
     Parameters
     ----------
-    game : game.Game
+    game : pn.Game
         Game object to plot. The game class is inferred from the payoff data.
         Supported classes are "2P2S", "2P3S", "2P4S", and "3P2S".
     fig : matplotlib.figure.Figure, optional

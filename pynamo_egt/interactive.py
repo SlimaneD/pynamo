@@ -8,9 +8,9 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 
-import analysis
-import drawer
-import examples
+from . import analysis
+from . import drawer
+from . import examples
 
 __all__ = ["launch_replicator_widget"]
 

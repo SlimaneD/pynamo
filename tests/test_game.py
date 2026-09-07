@@ -1,9 +1,7 @@
 import numpy as np
 import pytest
 
-import game
-
-
+from pynamo_egt import game
 def test_symmetric_3_strategy_game_class():
     g = game.Game(
         "RPS",

@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 
-from game import infer_game_class
+from .game import infer_game_class
 
 __all__ = [
     "DegenerateEquilibriumWarning",

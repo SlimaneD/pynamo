@@ -94,14 +94,13 @@ python -m pytest -q
 ```python
 import matplotlib.pyplot as plt
 
-import drawer
-import examples
+import pynamo_egt as pn
 
-fig, ax = drawer.phase_portrait(examples.games.good_rps)
+fig, ax = pn.phase_portrait(pn.examples.games.good_rps)
 plt.show()
 ```
 
-`drawer.phase_portrait` returns ordinary Matplotlib objects, so figures can be
+`pn.phase_portrait` returns ordinary Matplotlib objects, so figures can be
 modified or saved with standard Matplotlib commands:
 
 ```python
@@ -111,25 +110,25 @@ fig.savefig("good_rps.pdf", bbox_inches="tight")
 
 ## Built-In Examples
 
-Built-in games are available through `examples.games`:
+Built-in games are available through `pn.examples.games`:
 
 ```python
-g = examples.games.battle_of_the_sexes
-same_game = examples.games("battle_of_the_sexes")
-examples.games.by_class("2P2S")
+g = pn.examples.games.battle_of_the_sexes
+same_game = pn.examples.games("battle_of_the_sexes")
+pn.examples.games.by_class("2P2S")
 ```
 
 Each catalogue game carries metadata:
 
 ```python
-g = examples.games.chaotic_four_strategy_game
+g = pn.examples.games.chaotic_four_strategy_game
 g.describe()
 ```
 
 You can also use the module-level helper:
 
 ```python
-examples.describe(g)
+pn.examples.describe(g)
 ```
 
 The metadata include the game description, reference, parameter values, and the
@@ -157,9 +156,8 @@ A symmetric 3-strategy game:
 
 ```python
 import numpy as np
-import game
-
-my_game = game.Game(
+import pynamo_egt as pn
+my_game = pn.Game(
     name="My RPS Variant",
     payoffs=np.array([
         [0, -1, 2],
@@ -173,7 +171,7 @@ my_game = game.Game(
 An asymmetric 2-player / 2-strategy game:
 
 ```python
-my_asymmetric_game = game.Game(
+my_asymmetric_game = pn.Game(
     name="My Asymmetric Game",
     payoffs=(
         np.array([[3, 0], [1, 2]], dtype=float),
@@ -187,11 +185,11 @@ my_asymmetric_game = game.Game(
 
 ## Plot Customization
 
-Most common plotting options are parameters of `drawer.phase_portrait`:
+Most common plotting options are parameters of `pn.phase_portrait`:
 
 ```python
-fig, ax = drawer.phase_portrait(
-    examples.games.matching_pennies,
+fig, ax = pn.phase_portrait(
+    pn.examples.games.matching_pennies,
     starts=[[0.2, 0.7], [0.7, 0.5], [0.9, 0.9]],
     tmax=40,
     speed_cmap=plt.cm.cividis,
@@ -207,8 +205,8 @@ fig, ax = drawer.phase_portrait(
 Use one color per trajectory by passing a list:
 
 ```python
-fig, ax = drawer.phase_portrait(
-    examples.games.cyclic_mismatching_pennies,
+fig, ax = pn.phase_portrait(
+    pn.examples.games.cyclic_mismatching_pennies,
     starts=[[0.52, 0.50, 0.48], [0.70, 0.45, 0.35]],
     trajectory_color=["tab:blue", "tab:orange"],
     trajectory_arrows=[],
@@ -219,8 +217,8 @@ fig, ax = drawer.phase_portrait(
 Colored faces are available for 3D state spaces:
 
 ```python
-fig, ax = drawer.phase_portrait(
-    examples.games.ownership_game,
+fig, ax = pn.phase_portrait(
+    pn.examples.games.ownership_game,
     show_faces=True,
     face_alpha=0.15,
 )
@@ -238,32 +236,32 @@ enable Matplotlib's `text.usetex` option manually.
 For the full parameter documentation:
 
 ```python
-help(drawer.phase_portrait)
+help(pn.phase_portrait)
 ```
 
 ## Equilibrium Analysis
 
-For notebooks, use `analysis.equilibrium_table`:
+For notebooks, use `pn.equilibrium_table`:
 
 ```python
-import analysis
+import pynamo_egt as pn
 
-analysis.equilibrium_table(examples.games.good_rps)
+pn.equilibrium_table(pn.examples.games.good_rps)
 ```
 
 For programmatic use:
 
 ```python
-result = analysis.analyze_equilibria(examples.games.good_rps)
+result = pn.analyze_equilibria(pn.examples.games.good_rps)
 rows = result.to_rows()
 ```
 
 For quick access to static equilibrium concepts:
 
 ```python
-analysis.find_nash(examples.games.good_rps)
-analysis.find_strict_nash(examples.games.good_rps)
-analysis.find_ess(examples.games.good_rps)
+pn.find_nash(pn.examples.games.good_rps)
+pn.find_strict_nash(pn.examples.games.good_rps)
+pn.find_ess(pn.examples.games.good_rps)
 ```
 
 `find_ess` returns ESS only for symmetric games.
@@ -290,8 +288,8 @@ In a notebook, use:
 ```python
 %matplotlib widget
 
-from interactive import launch_replicator_widget
-launch_replicator_widget()
+import pynamo_egt as pn
+pn.interactive.launch_replicator_widget()
 ```
 
 The widget lets users choose a game class and example, adjust trajectories, toggle
@@ -302,33 +300,24 @@ and that `%matplotlib widget` has been evaluated.
 
 ## Repository Structure
 
-- `game.py`: core `Game` class and game-class inference.
-- `examples.py`: curated catalogue of predefined games.
-- `dynamics.py`: replicator vector fields and rest-point computation.
-- `analysis.py`: equilibrium and stability analysis.
-- `drawer.py`: plotting helpers and `phase_portrait`.
-- `interactive.py`: Jupyter widget front-end.
+- `pynamo_egt/game.py`: core `Game` class and game-class inference.
+- `pynamo_egt/examples.py`: curated catalogue of predefined games.
+- `pynamo_egt/dynamics.py`: replicator vector fields and rest-point computation.
+- `pynamo_egt/analysis.py`: equilibrium and stability analysis.
+- `pynamo_egt/drawer.py`: plotting helpers and `phase_portrait`.
+- `pynamo_egt/interactive.py`: Jupyter widget front-end.
 - `tutorial.ipynb`: notebook tutorial.
 - `tests/`: pytest test suite.
 
-### Nash equilibria and ESS
+## Imports in version 0.2.0
 
-pyNamo annotates only the replicator rest points returned by its dynamical
-solver. Nash and strict Nash labels use direct best-response payoff tests;
-there is no separate Nash search and no additional equilibrium points are
-inserted. `find_nash`, `find_strict_nash`, and `find_ess` filter these same
-analyzed rest points, rather than enumerate complete static equilibrium sets.
+The distribution is named `pynamo-egt`; its Python package is `pynamo_egt`.
+Use `import pynamo_egt as pn` for `pn.Game`, `pn.phase_portrait`,
+`pn.analyze_equilibria`, `pn.equilibrium_table`, `pn.find_nash`,
+`pn.find_strict_nash`, and `pn.find_ess`. The same functions remain accessible
+through modules, for example `pn.drawer.phase_portrait`.
 
-ESS classification checks the quadratic payoff condition on all feasible
-invasion directions tied as best responses, including unused strategies at
-boundary equilibria. Calculations use floating-point tolerances (typically
-1e-8); classifications very close to degeneracy are tolerance-sensitive.
-
-`result.degenerate` and `result.message` describe limitations of rest-point
-discovery. Continuous rest-point families are not expanded into individual
-points; pure vertices are retained even when they belong to such families.
-All-zero games are flagged as degenerate.
-
-Coordinate convention: symmetric states list all strategy frequencies;
-two-player asymmetric coordinates give action 0 probabilities; the current
-three-player implementation gives tensor action 1 probabilities.
+Old top-level imports such as `import drawer` and `import game` are removed.
+Replace them with `from pynamo_egt import drawer, game`, or use the shorter
+package-level interface. Optional widgets are imported only when requested.
+This release preparation does not publish the distribution to PyPI.

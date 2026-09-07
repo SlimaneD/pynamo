@@ -6,7 +6,7 @@ from typing import Dict, Iterable, Iterator, Tuple
 
 import numpy as np
 
-from game import Game, format_game_description
+from .game import Game, format_game_description
 
 __all__ = ["GameCatalog", "describe", "games"]
 
@@ -14,12 +14,12 @@ __all__ = ["GameCatalog", "describe", "games"]
 def describe(game: Game) -> None:
     """Print a readable summary of a game and its catalogue metadata.
 
-    This is a convenience wrapper around `game.Game.describe`.
+    This is a convenience wrapper around `pn.Game.describe`.
 
     Examples
     --------
-    >>> import examples
-    >>> examples.describe(examples.games.good_rps)
+    >>> import pynamo_egt as pn
+    >>> pn.examples.describe(pn.examples.games.good_rps)
     """
     print(format_game_description(game))
 
@@ -31,10 +31,10 @@ class GameCatalog:
 
     Examples
     --------
-    >>> import examples
-    >>> examples.games.good_rps
-    >>> examples.games("good_rps")
-    >>> examples.games.by_class("2P2S")
+    >>> import pynamo_egt as pn
+    >>> pn.examples.games.good_rps
+    >>> pn.examples.games("good_rps")
+    >>> pn.examples.games.by_class("2P2S")
     """
 
     def __init__(self, games_by_name: Dict[str, Game]) -> None:
@@ -42,7 +42,7 @@ class GameCatalog:
 
         Parameters
         ----------
-        games_by_name : dict of str to game.Game
+        games_by_name : dict of str to pn.Game
             Mapping from stable example identifiers to Game objects.
         """
         self._games = dict(games_by_name)
@@ -57,7 +57,7 @@ class GameCatalog:
 
         Returns
         -------
-        game.Game
+        pn.Game
             The requested example game.
         """
         return self._games[name]
@@ -92,7 +92,7 @@ class GameCatalog:
 
         Returns
         -------
-        dict of str to game.Game
+        dict of str to pn.Game
             Examples whose inferred game class matches `game_class`.
         """
         return {

@@ -1,9 +1,7 @@
 import numpy as np
 
-import dynamics
-import examples
-
-
+from pynamo_egt import dynamics
+from pynamo_egt import examples
 def test_replicator_2p2s_shape():
     payoff_data = examples.games.matching_pennies.payoff_data
     vector = dynamics.replicator_2p2s([0.4, 0.6], 0, payoff_data)

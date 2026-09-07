@@ -1,12 +1,10 @@
 import numpy as np
 import pytest
 
-import analysis
-import dynamics
-import game
-import examples
-
-
+from pynamo_egt import analysis
+from pynamo_egt import dynamics
+from pynamo_egt import game
+from pynamo_egt import examples
 EXPECTED_COLUMNS = [
     "Position",
     "Stability Status",

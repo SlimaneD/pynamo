@@ -188,8 +188,8 @@ class Game:
 
         Examples
         --------
-        >>> import examples
-        >>> examples.games.good_rps.describe()
+        >>> import pynamo_egt as pn
+        >>> pn.examples.games.good_rps.describe()
         """
         print(format_game_description(self))
 
