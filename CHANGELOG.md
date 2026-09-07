@@ -2,6 +2,8 @@
 
 ## 0.1.2 — 2026-09-07
 
+- Preserve Colab’s preinstalled dependencies by installing only the core package without forced reinstallation or notebook extras.
+
 - Fix ESS classification at boundary rest points when unused strategies tie as best responses. The test now includes all feasible tied-mutant invasion directions.
 - Correctly flag all-zero games as having non-isolated replicator rest points.
 - Clarify that Nash, strict Nash, and ESS classifications annotate detected replicator rest points; they do not enumerate additional static equilibria.
