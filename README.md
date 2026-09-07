@@ -310,3 +310,28 @@ and that `%matplotlib widget` has been evaluated.
 - `interactive.py`: Jupyter widget front-end.
 - `tutorial.ipynb`: notebook tutorial.
 - `tests/`: pytest test suite.
+
+### Nash equilibria and ESS
+
+pyNamo annotates only the replicator rest points returned by its dynamical
+solver. Nash and strict Nash labels use direct best-response payoff tests;
+there is no separate Nash search and no additional equilibrium points are
+inserted. `find_nash`, `find_strict_nash`, and `find_ess` filter these same
+analyzed rest points, rather than enumerate complete static equilibrium sets.
+
+ESS classification checks the quadratic payoff condition on all feasible
+invasion directions tied as best responses, including unused strategies at
+boundary equilibria. Calculations use floating-point tolerances (typically
+1e-8); classifications very close to degeneracy are tolerance-sensitive.
+
+`result.degenerate` and `result.message` describe limitations of rest-point
+discovery. Continuous rest-point families are not expanded into individual
+points; pure vertices are retained even when they belong to such families.
+All-zero games are flagged as degenerate.
+
+PyGambit is used only by the optional comparison script in `benchmarks/`.
+It is not a runtime dependency of pyNamo.
+
+Coordinate convention: symmetric states list all strategy frequencies;
+two-player asymmetric coordinates give action 0 probabilities; the current
+three-player implementation gives tensor action 1 probabilities.

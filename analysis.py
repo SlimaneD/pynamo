@@ -38,7 +38,7 @@ warnings.simplefilter("always", InconclusiveStabilityWarning)
 
 @dataclass
 class AnalyzedEquilibrium:
-    """Analysis data for one isolated equilibrium."""
+    """Analysis data for one detected replicator rest point."""
 
     reduced_position: np.ndarray
     full_position: np.ndarray
@@ -60,7 +60,7 @@ class EquilibriumAnalysis:
     Attributes
     ----------
     equilibria : list of AnalyzedEquilibrium
-        One entry per isolated equilibrium detected by pyNamo.
+        One entry per detected replicator rest point in the game domain.
     game_class : str
         Supported pyNamo game-class identifier: "2P2S", "2P3S", "2P4S", or
         "3P2S".
@@ -73,9 +73,8 @@ class EquilibriumAnalysis:
     Notes
     -----
     Table positions are full mixed strategies. Entries follow the strategy order
-    supplied when defining the game. For 2-strategy asymmetric games, each
-    coordinate is the probability that the corresponding player uses their first
-    listed strategy.
+    supplied when defining the game. For asymmetric games, coordinates give action 0 probabilities in 2P2S
+    and tensor action 1 probabilities in 3P2S.
     """
 
     equilibria: List[AnalyzedEquilibrium]
@@ -99,8 +98,8 @@ class EquilibriumAnalysis:
         Notes
         -----
         The Position column follows the strategy order stored in the Game object.
-        In 2P2S and 3P2S games, each coordinate is the probability of the first
-        listed strategy for that player.
+        In 2P2S coordinates give action 0 probabilities; in 3P2S they give
+        tensor action 1 probabilities.
         """
         return [_equilibrium_to_row(equilibrium, ndigits) for equilibrium in self.equilibria]
 
@@ -123,7 +122,7 @@ class EquilibriumAnalysis:
 
 
 def analyze_equilibria(game) -> EquilibriumAnalysis:
-    """Analyze isolated equilibria of a supported game.
+    """Annotate detected replicator rest points with static and dynamic properties.
 
     Parameters
     ----------
@@ -150,8 +149,8 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
     Notes
     -----
     Returned positions follow the strategy order supplied when defining the game.
-    For 2-strategy asymmetric games, each coordinate is the probability that the
-    corresponding player uses their first listed strategy.
+    Asymmetric coordinates give action 0 probabilities in 2P2S and tensor
+    action 1 probabilities in 3P2S.
     Eigenvalue computations are numerical. Tiny imaginary parts below the
     internal tolerance are treated as numerical noise when filtering admissible
     eigendirections at boundary equilibria.
@@ -213,6 +212,7 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
         game_class=game_class,
         degenerate=getattr(raw_equilibria, "degenerate", False),
         message=getattr(raw_equilibria, "message", None),
+
     )
 
 
@@ -235,18 +235,20 @@ def equilibrium_table(game, ndigits: int = 6):
     Notes
     -----
     The Position column follows the strategy order supplied when defining the
-    game. For 2P2S and 3P2S games, each coordinate is the probability of the
-    first listed strategy for that player.
+    game. Asymmetric coordinates give action 0 probabilities in 2P2S and
+    tensor action 1 probabilities in 3P2S.
 
-    The table reports only isolated equilibria. If non-isolated equilibrium
-    manifolds are detected, pyNamo emits a warning and reports any isolated
-    equilibria it can still identify.
+    Only rest points returned by dynamics.compute_equilibria are classified.
+    No additional Nash points or equilibrium families are introduced.
+    Degeneracy metadata concerns rest-point discovery, not classification.
     """
     return analyze_equilibria(game).to_dataframe(ndigits=ndigits)
 
 
 def find_nash(game):
-    """Return all isolated Nash equilibria detected for the game.
+    """Return detected replicator rest points that satisfy the Nash condition.
+
+    This filters the analyzed rest points; it does not enumerate the Nash set.
 
     Parameters
     ----------
@@ -267,7 +269,7 @@ def find_nash(game):
 
 
 def find_strict_nash(game):
-    """Return all isolated strict Nash equilibria detected for the game.
+    """Return detected replicator rest points that are strict Nash.
 
     Parameters
     ----------
@@ -288,7 +290,7 @@ def find_strict_nash(game):
 
 
 def find_ess(game):
-    """Return all isolated ESS detected for symmetric games.
+    """Return detected replicator rest points that are ESS in symmetric games.
 
     Parameters
     ----------
@@ -733,16 +735,7 @@ def _is_ess_symmetric(reduced, payoff_data, game_class, tol: float = 1e-8) -> Op
 
     support = np.flatnonzero(p > tol)
     best_responses = np.flatnonzero(np.abs(pure_payoff_data - payoff_at_p) <= tol)
-    if best_responses.size != support.size or set(best_responses) != set(support):
-        return False
-    if support.size == 1:
-        return True
-
-    payoff_submatrix = payoff_data[np.ix_(support, support)]
-    symmetric_part = 0.5 * (payoff_submatrix + payoff_submatrix.T)
-    basis = _tangent_basis(support.size)
-    restricted = basis.T @ symmetric_part @ basis
-    return bool(np.all(np.linalg.eigvalsh(restricted) < -tol))
+    return _ess_on_critical_cone(payoff_data, support, best_responses, tol)
 
 
 def _tangent_basis(size):
@@ -803,3 +796,51 @@ def _format_matrix(values, ndigits: int):
         [_format_number(matrix[row, col], ndigits) for row in range(matrix.shape[0])]
         for col in range(matrix.shape[1])
     ]
+
+
+def _ess_on_critical_cone(a, support, best, tol=1e-8):
+    """Test z'Az<0 on sum(z)=0, z_unused>=0, z_nonbest=0.
+
+    The sphere maximum lies on a cone face and is an eigenvector of the
+    symmetric quadratic form restricted to that face's linear span. Enumerate
+    faces and check nonnegative eigenvalue eigenspaces for feasible directions.
+    """
+    from itertools import combinations
+    from scipy.linalg import null_space
+    from scipy.optimize import linprog
+    unused = [i for i in best if i not in support]
+    for count in range(len(unused) + 1):
+        for entering in combinations(unused, count):
+            indices = list(support) + list(entering)
+            if len(indices) < 2:
+                continue
+            basis = null_space(np.ones((1, len(indices))))
+            submatrix = a[np.ix_(indices, indices)]
+            restricted = basis.T @ ((submatrix + submatrix.T) / 2) @ basis
+            eigenvalues, eigenvectors = np.linalg.eigh(restricted)
+            for value in eigenvalues:
+                if value < -tol:
+                    continue
+                group = np.abs(eigenvalues - value) <= tol
+                space = basis @ eigenvectors[:, group]
+                # Homogeneity lets us scale any nonzero feasible direction
+                # until one coordinate equals +1 or -1. Check both signs.
+                constraints = -space[len(support):]
+                for row in space:
+                    for sign in (-1.0, 1.0):
+                        result = linprog(
+                            np.zeros(space.shape[1]),
+                            A_ub=constraints if len(constraints) else None,
+                            b_ub=np.zeros(len(constraints)) if len(constraints) else None,
+                            A_eq=row[None, :],
+                            b_eq=[sign],
+                            bounds=[(None, None)] * space.shape[1],
+                            method="highs",
+                        )
+                        if result.success:
+                            return False
+                        if result.status != 2:
+                            raise RuntimeError(
+                                "ESS cone feasibility test failed: " + result.message
+                            )
+    return True

@@ -237,9 +237,9 @@ def compute_equilibria(payoff_data):
         degenerate = True
         message = (
             "Degenerate equilibrium solutions detected: SymPy returned a "
-            "parametric/non-isolated solution set. Non-isolated equilibrium "
-            "sets are not plotted; isolated equilibria are still shown when "
-            "they can be identified."
+            "parametric/non-isolated solution set. Non-isolated rest-point "
+            "families are not expanded into points; vertices and identifiable "
+            "isolated points are retained."
         )
         warnings.warn(message, DegenerateEquilibriumWarning, stacklevel=3)
 
@@ -263,7 +263,7 @@ def compute_equilibria(payoff_data):
     if game_class == "2P3S":
         dx, dy = replicator_2p3s([x_sym, y_sym], time_0, payoff_data)
         mass_constraint = dx + dy
-        solutions = solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
+        solutions = [{}] if dx == 0 and dy == 0 else solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
         symbols = (x_sym, y_sym)
         equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
@@ -274,7 +274,7 @@ def compute_equilibria(payoff_data):
         pay_p1, pay_p2 = payoff_data
         dx = _replicator_2p2s_population([x_sym, y_sym], time_0, pay_p1)
         dy = _replicator_2p2s_population([y_sym, x_sym], time_0, pay_p2)
-        solutions = solve([dx, dy], x_sym, y_sym, dict=True)
+        solutions = [{}] if dx == 0 and dy == 0 else solve([dx, dy], x_sym, y_sym, dict=True)
         symbols = (x_sym, y_sym)
         equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
@@ -284,7 +284,7 @@ def compute_equilibria(payoff_data):
     elif game_class == "3P2S":
         z_sym = Symbol('z')
         dx, dy, dz = replicator_3p2s([x_sym, y_sym, z_sym], time_0, payoff_data)
-        solutions = solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
+        solutions = [{}] if dx == 0 and dy == 0 and dz == 0 else solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
         symbols = (x_sym, y_sym, z_sym)
         equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:
@@ -304,7 +304,7 @@ def compute_equilibria(payoff_data):
         z_sym = Symbol('z')
         dx, dy, dz = replicator_2p4s([x_sym, y_sym, z_sym], time_0, payoff_data)
         mass_constraint = dx + dy + dz
-        solutions = solve([dx, dy, dz, mass_constraint], x_sym, y_sym, z_sym, dict=True)
+        solutions = [{}] if dx == 0 and dy == 0 and dz == 0 else solve([dx, dy, dz, mass_constraint], x_sym, y_sym, z_sym, dict=True)
         symbols = (x_sym, y_sym, z_sym)
         equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
         if degenerate:

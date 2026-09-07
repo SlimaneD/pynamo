@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use pyNamo-EGT in research or teaching, please cite it using this metadata."
 title: "pyNamo-EGT: Replicator Dynamics for Evolutionary Games in Python"
-version: 0.1.0
-date-released: 2026-09-03
+version: 0.1.2
+date-released: 2026-09-07
 authors:
   - family-names: Dridi
     given-names: Slimane
