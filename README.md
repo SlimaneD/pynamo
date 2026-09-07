@@ -329,9 +329,6 @@ discovery. Continuous rest-point families are not expanded into individual
 points; pure vertices are retained even when they belong to such families.
 All-zero games are flagged as degenerate.
 
-PyGambit is used only by the optional comparison script in `benchmarks/`.
-It is not a runtime dependency of pyNamo.
-
 Coordinate convention: symmetric states list all strategy frequencies;
 two-player asymmetric coordinates give action 0 probabilities; the current
 three-player implementation gives tensor action 1 probabilities.
