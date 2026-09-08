@@ -2,6 +2,8 @@
 
 ## 0.2.0 — Unreleased
 
+- Use inline PNG previews for ordinary tutorial plots; enable widgets explicitly for the explorer and 3D examples.
+
 - Introduce the `pynamo_egt` package namespace and a convenient top-level API.
 - Replace standalone module imports with package imports throughout the tutorials and tests. Old imports such as `import drawer` are no longer supported.
 - Keep the optional notebook widget module lazily loaded.
