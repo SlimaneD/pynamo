@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.2.0 — Unreleased
+## 0.2.0 — 2026-09-08
 
-- Use inline PNG previews for ordinary tutorial plots; enable widgets explicitly for the explorer and 3D examples.
-
+- Use Retina inline PNG previews for ordinary tutorial plots while retaining widgets for the explorer and rotatable 3D examples; SVG/PDF export quality is unaffected.
+- Document occasional blank interactive 3D outputs in Binder, with advice to rerun the plotting cell or use an inline static preview.
 - Introduce the `pynamo_egt` package namespace and a convenient top-level API.
 - Replace standalone module imports with package imports throughout the tutorials and tests. Old imports such as `import drawer` are no longer supported.
 - Keep the optional notebook widget module lazily loaded.
@@ -11,7 +11,6 @@
 ## 0.1.2 — 2026-09-07
 
 - Preserve Colab’s preinstalled dependencies by installing only the core package without forced reinstallation or notebook extras.
-
 - Fix ESS classification at boundary rest points when unused strategies tie as best responses. The test now includes all feasible tied-mutant invasion directions.
 - Correctly flag all-zero games as having non-isolated replicator rest points.
 - Clarify that Nash, strict Nash, and ESS classifications annotate detected replicator rest points; they do not enumerate additional static equilibria.

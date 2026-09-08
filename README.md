@@ -26,6 +26,11 @@ including the interactive widget and rotatable 3D Matplotlib figures:
 Binder runs in the browser and does not require a local installation. First launch
 can take a few minutes while Binder builds the environment.
 
+Interactive 3D plots may occasionally appear blank in Binder. Try rerunning the
+plotting cell. If the issue persists, replace `%matplotlib widget` with
+`%matplotlib inline` in that plotting cell for a static preview without rotation.
+SVG/PDF export quality is unaffected.
+
 **2. Faster static tutorial in Google Colab**
 
 Use Colab if you want a faster browser-based preview of the tutorial:
