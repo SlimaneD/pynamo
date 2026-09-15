@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.3.0 — 2026-09-16
+
+### New features
+
+- Add one-population symmetric 2×2 games (`1Pop2S`), including phase-line portraits, equilibrium analysis, automatic arrows between equilibria, and explicit rendering of complete equilibrium continua.
+- Add sampled bifurcation diagrams for parameterized symmetric 2×2 games, with customizable equilibrium branches, phase lines, regime labels, arrows, markers, and continuum colors.
+- Add the four standard `1Pop2S` regimes to the example catalogue: Prisoner’s Dilemma, Hawk–Dove, coordination, and mutualism.
+- Replace random default trajectories with an exact user-selected number of reproducibly spaced initial conditions obtained from recursive state-space partitions.
+- Add automatic one-dimensional boundary flow to `1Pop3S` and `2Pop2S` portraits, with arrows placed halfway between consecutive edge equilibria.
+- Add `1Pop2S` examples to the interactive widget and show boundary flow by default in its two-dimensional state spaces while retaining seeded random interior trajectories.
+
+### API changes
+
+- Rename game-class identifiers to `1Pop2S`, `1Pop3S`, `1Pop4S`, `2Pop2S`, and `3Pop2S`. Catalogue lookup continues to accept the former identifiers.
+- Rename the rest-point filters to `rest_points_nash`, `rest_points_strict_nash`, and `rest_points_ess`, clarifying that they classify detected replicator rest points rather than exhaustively enumerating equilibrium families.
+- Remove the former `find_nash`, `find_strict_nash`, and `find_ess` aliases.
+- Make `hawk_dove` the canonical one-population example and rename the square-state-space version to `two_population_hawk_dove`.
+- Set the default trajectory linewidth to 1.2.
+
+### Corrections
+
+- Make every `3Pop2S` coordinate represent the probability of the corresponding player’s first listed strategy.
+- Derive `3Pop2S` cube-axis labels from `player_strategy_labels` when explicit axis labels are absent.
+- Clarify that each `2Pop2S` payoff matrix uses its focal player’s strategies as rows and the opponent’s strategies as columns.
+- Correct the two-population Hawk–Dove metadata: its interior rest point is a saddle.
+- Render `1Pop2S` Nash, strict-Nash, and ESS values consistently as Boolean values.
+- Return `2Pop2S` vector fields consistently as NumPy arrays.
+- Prevent custom trajectory arrowheads from being clipped on square boundaries.
+- Make state-space drawing respect the supplied Matplotlib axes in multi-panel figures.
+- Avoid changing applications’ global warning filters when pyNamo is imported.
+- Keep live widget figures active when later notebook cells switch Matplotlib backends or close pyplot-managed figures.
+- Remove obsolete debug code from the four-strategy payoff calculation.
+
+### Documentation
+
+- Add introductory phase-line and bifurcation sections to both tutorial notebooks.
+- Reorganize the tutorials around the widget, one-population phase lines, the general mathematical model, supported game classes, higher-dimensional portraits, and bifurcation diagrams.
+- Document deterministic trajectory placement, automatic boundary flow, coordinate conventions, equilibrium warnings, and publication-quality figure controls.
+
 ## 0.2.0 — 2026-09-08
 
 - Use Retina inline PNG previews for ordinary tutorial plots while retaining widgets for the explorer and rotatable 3D examples; SVG/PDF export quality is unaffected.

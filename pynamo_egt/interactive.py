@@ -12,7 +12,7 @@ from . import analysis
 from . import drawer
 from . import examples
 
-__all__ = ["launch_replicator_widget"]
+__all__ = ["detach_widget_figure", "launch_replicator_widget"]
 
 try:  # pragma: no cover - optional dependency
     import ipywidgets as widgets
@@ -25,24 +25,25 @@ else:
 
 
 GAME_LABELS = {
-    "2P3S": "Symmetric 2-player / 3-strategy",
-    "2P4S": "Symmetric 2-player / 4-strategy",
-    "2P2S": "Asymmetric 2-player / 2-strategy",
-    "3P2S": "Asymmetric 3-player / 2-strategy",
+    "1Pop2S": "One population / 2 strategies",
+    "1Pop3S": "One population / 3 strategies",
+    "1Pop4S": "One population / 4 strategies",
+    "2Pop2S": "Two populations / 2 strategies each",
+    "3Pop2S": "Three populations / 2 strategies each",
 }
 
 
 def _sample_initial_conditions(game, count: int, rng: np.random.Generator) -> List[List[float]]:
     game_class = game.game_class
-    if game_class in ("2P3S", "2P4S"):
+    if game_class in ("1Pop3S", "1Pop4S"):
         n = game.num_strategies()
         samples = rng.dirichlet(np.ones(n), size=count)
         return [vec[:-1].tolist() for vec in samples]
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         return rng.random((count, 2)).tolist()
 
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         return rng.random((count, 3)).tolist()
 
     return rng.random((count, 2)).tolist()
@@ -64,21 +65,29 @@ def _plot(
     game = examples.games(example_name)
 
     rng = np.random.default_rng(seed)
-    starts = _sample_initial_conditions(game, num_traj, rng)
-    trajectory_color = "royalblue" if game_key in ("2P4S", "3P2S") else "black"
+    starts = None if game_key == "1Pop2S" else _sample_initial_conditions(game, num_traj, rng)
+    trajectory_arrows = (
+        None
+        if game_key == "1Pop2S" and show_trajectory_arrow
+        else [0.001]
+        if show_trajectory_arrow
+        else []
+    )
+    trajectory_color = "royalblue" if game_key in ("1Pop4S", "3Pop2S") else "black"
     fig, ax = drawer.phase_portrait(
-        game,
+        game=game,
         fig=fig,
         starts=starts,
         tmax=tmax,
-        trajectory_arrows=[0.001] if show_trajectory_arrow else [],
-        trajectory_color="black" if game_key in ("2P3S", "2P2S") else trajectory_color,
+        trajectory_arrows=trajectory_arrows,
+        trajectory_color="black" if game_key in ("1Pop3S", "2Pop2S") else trajectory_color,
         trajectory_linewidth=1.2,
+        show_edge_flow=game_key in ("1Pop3S", "2Pop2S"),
         show_speed=show_speed,
         speed_cmap=plt.cm.Spectral_r,
         speed_levels=80,
         show_vector_field=show_vector_field,
-        vector_color="black" if game_key in ("2P3S", "2P2S") else "black",
+        vector_color="black" if game_key in ("1Pop3S", "2Pop2S") else "black",
         show_equilibria=show_equilibria,
         sink_color="black",
         saddle_color="gray",
@@ -94,16 +103,16 @@ def _display_payoff_data(game) -> None:
     payoff = game.payoff_data
     game_class = game.game_class
 
-    if game_class in ("2P3S", "2P4S"):
+    if game_class in ("1Pop2S", "1Pop3S", "1Pop4S"):
         display(Math(_symmetric_payoff_latex(payoff, game.strategy_labels)))
         return
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         display(Math(_bimatrix_payoff_latex(payoff, game.player_strategy_labels)))
         return
 
-    if game_class == "3P2S":
-        # Use HTML for 3P2S payoff tables because nested LaTeX arrays render
+    if game_class == "3Pop2S":
+        # Use HTML for 3Pop2S payoff tables because nested LaTeX arrays render
         # inconsistently across VS Code, Binder, and JupyterLab.
         display(HTML(_three_player_payoff_html(payoff)))
         return
@@ -134,15 +143,15 @@ def _append_payoff_data(output, game) -> None:
     payoff = game.payoff_data
     game_class = game.game_class
 
-    if game_class in ("2P3S", "2P4S"):
+    if game_class in ("1Pop2S", "1Pop3S", "1Pop4S"):
         output.append_display_data(Math(_symmetric_payoff_latex(payoff, game.strategy_labels)))
         return
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         output.append_display_data(Math(_bimatrix_payoff_latex(payoff, game.player_strategy_labels)))
         return
 
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         output.append_display_data(HTML(_three_player_payoff_html(payoff)))
         return
 
@@ -176,13 +185,13 @@ def _payoff_data_outputs(game) -> tuple[dict, ...]:
     payoff = game.payoff_data
     game_class = game.game_class
 
-    if game_class in ("2P3S", "2P4S"):
+    if game_class in ("1Pop2S", "1Pop3S", "1Pop4S"):
         return (_math_output(_symmetric_payoff_latex(payoff, game.strategy_labels)),)
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         return (_math_output(_bimatrix_payoff_latex(payoff, game.player_strategy_labels)),)
 
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         return (_html_output(_three_player_payoff_html(payoff)),)
 
     return (_markdown_output(f"```\n{payoff}\n```"),)
@@ -233,6 +242,19 @@ def _warning_outputs(caught_warnings) -> tuple[dict, ...]:
     return (_markdown_output("<br><h3>Warnings</h3><br>\n\n" + "\n".join(lines)),)
 
 
+def detach_widget_figure(figure) -> None:
+    """Keep a live widget figure active through later pyplot backend changes.
+
+    Call this after displaying an ``ipympl`` figure when subsequent notebook
+    cells switch to an inline backend or close pyplot-managed figures.
+    """
+    from matplotlib._pylab_helpers import Gcf
+
+    manager = getattr(figure.canvas, "manager", None)
+    if manager is not None and Gcf.figs.get(manager.num) is manager:
+        Gcf.figs.pop(manager.num)
+
+
 def _analysis_table_latex(rows: List[dict]) -> str:
     if not rows:
         return r"\text{No isolated equilibria found.}"
@@ -263,8 +285,8 @@ def _analysis_cell(value) -> str:
         return _latex_column_vector(value)
     if value is None:
         return r"\text{None}"
-    if isinstance(value, bool):
-        return rf"\text{{{value}}}"
+    if isinstance(value, (bool, np.bool_)):
+        return rf"\text{{{bool(value)}}}"
     if isinstance(value, str):
         return rf"\text{{{value}}}"
     return _format_number_latex(value)
@@ -464,7 +486,7 @@ def launch_replicator_widget() -> None:
             if examples.games.by_class(key)
         ],
         description="Game",
-        value="2P3S",
+        value="1Pop3S",
         style=label_style,
         layout=wide_layout,
     )
@@ -547,6 +569,15 @@ def launch_replicator_widget() -> None:
             example_dropdown.options = options
             if options:
                 example_dropdown.value = options[0][1]
+            one_dimensional = game_dropdown.value == "1Pop2S"
+            for control in (
+                traj_slider,
+                tmax_slider,
+                seed_slider,
+                speed_toggle,
+                vector_toggle,
+            ):
+                control.disabled = one_dimensional
         finally:
             updating_examples = False
 
@@ -624,6 +655,7 @@ def launch_replicator_widget() -> None:
         if first_render:
             if isinstance(figure.canvas, widgets.Widget):
                 plot_area.children = (figure.canvas,)
+                detach_widget_figure(figure)
             else:
                 plot_area.children = (fallback_plot_output,)
                 with fallback_plot_output:

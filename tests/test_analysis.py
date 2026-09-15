@@ -63,6 +63,18 @@ def test_static_equilibrium_concepts_are_present():
     assert isinstance(equilibrium.ess, bool)
 
 
+def test_one_population_boolean_columns_use_python_booleans():
+    result = analysis.analyze_equilibria(examples.games.hawk_dove)
+
+    for equilibrium, row in zip(result.equilibria, result.to_rows()):
+        assert isinstance(equilibrium.nash, bool)
+        assert isinstance(equilibrium.strict_nash, bool)
+        assert isinstance(equilibrium.ess, bool)
+        assert isinstance(row["Nash"], bool)
+        assert isinstance(row["Strict Nash"], bool)
+        assert isinstance(row["ESS"], bool)
+
+
 def test_hawk_dove_retaliator_edge_ess_has_eigenpairs():
     result = analysis.analyze_equilibria(examples.games.hawk_dove_retaliator)
     equilibrium = next(
@@ -75,3 +87,24 @@ def test_hawk_dove_retaliator_edge_ess_has_eigenpairs():
     assert equilibrium.stability == "sink"
     assert equilibrium.admissible_eigenvalues.size > 0
     assert equilibrium.admissible_eigenvectors.shape[1] > 0
+
+
+def test_3pop2s_first_strategy_dominance_has_sink_at_one():
+    payoff_tensors = []
+    for player in range(3):
+        tensor = np.zeros((2, 2, 2), dtype=float)
+        for action_profile in np.ndindex(tensor.shape):
+            tensor[action_profile] = 1.0 if action_profile[player] == 0 else 0.0
+        payoff_tensors.append(tensor)
+
+    result = analysis.analyze_equilibria(
+        game.Game("Dominant first strategies", tuple(payoff_tensors), symmetric=False)
+    )
+    equilibrium = next(
+        eq for eq in result.equilibria
+        if np.allclose(eq.reduced_position, [1.0, 1.0, 1.0])
+    )
+
+    assert equilibrium.nash is True
+    assert equilibrium.strict_nash is True
+    assert equilibrium.stability == "sink"

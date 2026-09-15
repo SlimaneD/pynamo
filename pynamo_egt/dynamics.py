@@ -1,5 +1,6 @@
 """Replicator vector fields and rest-point computation for pyNamo games."""
 
+from dataclasses import dataclass
 import warnings
 
 import numpy as np
@@ -18,14 +19,12 @@ __all__ = [
     "replicator_3p2s",
     "reverse_replicator_3p2s",
     "compute_equilibria",
+    "replicator_1d",
 ]
 
 
 class DegenerateEquilibriumWarning(RuntimeWarning):
     """Warning raised when equilibrium sets are non-isolated."""
-
-
-warnings.simplefilter("always", DegenerateEquilibriumWarning)
 
 
 class EquilibriumResult(list):
@@ -36,7 +35,7 @@ class EquilibriumResult(list):
         self.degenerate = degenerate
         self.message = message
 
-# Replicator dynamics for a symmetric 2P3S game
+# Replicator dynamics for a symmetric 1Pop3S game
 def _average_payoff_2p3s(x1, x2, y1, y2, payoff_data):
     """Average payoff of strategy (x1, x2) against strategy (y1, y2)."""
     return (
@@ -60,13 +59,13 @@ def replicator_2p3s(state, t, payoff_data):
 
 
 def reverse_replicator_2p3s(state, t, payoff_data):
-    """Reverse-time replicator dynamics for a symmetric 2P3S game."""
+    """Reverse-time replicator dynamics for a symmetric 1Pop3S game."""
     return -replicator_2p3s(state, t, payoff_data)
 
 
-# Replicator dynamics for an asymmetric 2P2S game
+# Replicator dynamics for an asymmetric 2Pop2S game
 def _replicator_2p2s_population(state, t, payoff_data):
-    """One-population component of asymmetric 2P2S replicator dynamics."""
+    """One-population component of asymmetric 2Pop2S replicator dynamics."""
     x, y = state
     payoff_action_1 = y * payoff_data[0][0] + (1 - y) * payoff_data[0][1]
     payoff_action_2 = y * payoff_data[1][0] + (1 - y) * payoff_data[1][1]
@@ -74,29 +73,27 @@ def _replicator_2p2s_population(state, t, payoff_data):
 
 
 def replicator_2p2s(state, t, payoff_data):
-    """Vector field for asymmetric 2-player 2-strategy replicator dynamics."""
+    """Vector field for asymmetric 2-player 2-strategy replicator dynamics.
+
+    Each player's payoff matrix uses that player's own strategies as rows and
+    the opponent's strategies as columns. The state coordinates are the
+    probabilities of the players' respective first-row strategies.
+    """
     x, y = state
-    return [
+    return np.array([
         _replicator_2p2s_population([x, y], t, payoff_data[0]),
         _replicator_2p2s_population([y, x], t, payoff_data[1]),
-    ]
+    ])
 
 
 def reverse_replicator_2p2s(state, t, payoff_data):
-    """Reverse-time vector field for asymmetric 2P2S replicator dynamics."""
+    """Reverse-time vector field for asymmetric 2Pop2S replicator dynamics."""
     return -np.asarray(replicator_2p2s(state, t, payoff_data))
 
-# Replicator dynamics for 2P4S game
+# Replicator dynamics for 1Pop4S game
 
 def _average_payoff_2p4s(x1, x2, x3, y1, y2, y3, payoff_data):
     """Average payoff of strategy (x1, x2, x3) against strategy (y1, y2, y3)."""
-#    X = np.array([x1, x2, x3, 1 - x1 - x2 - x3])
-#    Y = np.array([ [y1], [y2], [y3], [1 - y1 - y2 - y3] ])
-#    PY = np.dot(payoff_data, Y)
-#    sumT = np.dot(X, PY)[0]
-#    print("sumT", sumT)
-#    test = x1*(y1*payoff_data[0, 0] + y2*payoff_data[0, 1] + y3*payoff_data[0, 2] + (1 - y1 - y2 - y3)*payoff_data[0, 3]) + x2*(y1*payoff_data[1, 0] + y2*payoff_data[1, 1] + y3*payoff_data[1, 2] + (1 - y1 - y2 - y3)*payoff_data[1, 3]) + x3*(y1*payoff_data[2, 0] + y2*payoff_data[2, 1] + y3*payoff_data[2, 2] + (1 - y1 - y2 - y3)*payoff_data[2, 3]) + (1 - x1 - x2 - x3)*(y1*payoff_data[3, 0] + y2*payoff_data[3, 1] + y3*payoff_data[3, 2] + (1 - y1 - y2 - y3)*payoff_data[3, 3])
-#    print("test", test)
     return x1*(y1*payoff_data[0, 0] + y2*payoff_data[0, 1] + y3*payoff_data[0, 2] + (1 - y1 - y2 - y3)*payoff_data[0, 3]) + x2*(y1*payoff_data[1, 0] + y2*payoff_data[1, 1] + y3*payoff_data[1, 2] + (1 - y1 - y2 - y3)*payoff_data[1, 3]) + x3*(y1*payoff_data[2, 0] + y2*payoff_data[2, 1] + y3*payoff_data[2, 2] + (1 - y1 - y2 - y3)*payoff_data[2, 3]) + (1 - x1 - x2 - x3)*(y1*payoff_data[3, 0] + y2*payoff_data[3, 1] + y3*payoff_data[3, 2] + (1 - y1 - y2 - y3)*payoff_data[3, 3])
 
 
@@ -108,7 +105,7 @@ def replicator_2p4s(state, t, payoff_data):
 
 
 def reverse_replicator_2p4s(state, t, payoff_data):
-    """Reverse-time replicator dynamics for a symmetric 2P4S game."""
+    """Reverse-time replicator dynamics for a symmetric 1Pop4S game."""
     return -replicator_2p4s(state, t, payoff_data)
 
 
@@ -127,7 +124,7 @@ def _average_payoff_3p2s(pay_tensor, probs, player_index, action):
                     if idx == player_index:
                         continue
                     p = probs[idx]
-                    prob *= p if a_val == 1 else (1 - p)
+                    prob *= p if a_val == 0 else (1 - p)
                 total += pay_tensor[a0, a1, a2] * prob
     return total
 
@@ -144,9 +141,9 @@ def replicator_3p2s(state, t, payoff_tensors):
         u1 = _average_payoff_3p2s(tensor, probs, idx, 1)
         payoff_data.append((u0, u1))
 
-    dx = x * (payoff_data[0][1] - (x * payoff_data[0][1] + (1 - x) * payoff_data[0][0]))
-    dy = y * (payoff_data[1][1] - (y * payoff_data[1][1] + (1 - y) * payoff_data[1][0]))
-    dz = z * (payoff_data[2][1] - (z * payoff_data[2][1] + (1 - z) * payoff_data[2][0]))
+    dx = x * (payoff_data[0][0] - (x * payoff_data[0][0] + (1 - x) * payoff_data[0][1]))
+    dy = y * (payoff_data[1][0] - (y * payoff_data[1][0] + (1 - y) * payoff_data[1][1]))
+    dz = z * (payoff_data[2][0] - (z * payoff_data[2][0] + (1 - z) * payoff_data[2][1]))
     return np.array([dx, dy, dz])
 
 
@@ -162,6 +159,12 @@ def compute_equilibria(payoff_data):
     from itertools import product
 
     game_class = infer_game_class(payoff_data)
+    if game_class == "1Pop2S":
+        points, continuum = _analyze_1d(payoff_data)
+        return EquilibriumResult(
+            [[p.x] for p in points], degenerate=continuum,
+            message="Every frequency in [0, 1] is an equilibrium." if continuum else None,
+        )
     time_0 = 0
     x_sym = Symbol('x')
     y_sym = Symbol('y')
@@ -193,7 +196,7 @@ def compute_equilibria(payoff_data):
 
     def _is_vertex(point):
         point = list(point)
-        if game_class in ("2P3S", "2P4S"):
+        if game_class in ("1Pop3S", "1Pop4S"):
             origin = all(abs(coord) < 1e-9 for coord in point)
             basis_vertex = (
                 sum(abs(coord - 1.0) < 1e-9 for coord in point) == 1
@@ -201,7 +204,7 @@ def compute_equilibria(payoff_data):
             )
             return origin or basis_vertex
 
-        if game_class in ("2P2S", "3P2S"):
+        if game_class in ("2Pop2S", "3Pop2S"):
             return all(abs(coord) < 1e-9 or abs(coord - 1.0) < 1e-9 for coord in point)
 
         return False
@@ -260,7 +263,7 @@ def compute_equilibria(payoff_data):
             ):
                 equilibria.append(list(point))
 
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         dx, dy = replicator_2p3s([x_sym, y_sym], time_0, payoff_data)
         mass_constraint = dx + dy
         solutions = [{}] if dx == 0 and dy == 0 else solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
@@ -270,7 +273,7 @@ def compute_equilibria(payoff_data):
             _mark_degenerate()
         _add_missing_points([(1.0, 0.0), (0.0, 1.0), (0.0, 0.0)], parametric, symbols)
 
-    elif game_class == "2P2S":
+    elif game_class == "2Pop2S":
         pay_p1, pay_p2 = payoff_data
         dx = _replicator_2p2s_population([x_sym, y_sym], time_0, pay_p1)
         dy = _replicator_2p2s_population([y_sym, x_sym], time_0, pay_p2)
@@ -281,7 +284,7 @@ def compute_equilibria(payoff_data):
             _mark_degenerate()
         _add_missing_points(product((0.0, 1.0), repeat=2), parametric, symbols)
 
-    elif game_class == "3P2S":
+    elif game_class == "3Pop2S":
         z_sym = Symbol('z')
         dx, dy, dz = replicator_3p2s([x_sym, y_sym, z_sym], time_0, payoff_data)
         solutions = [{}] if dx == 0 and dy == 0 and dz == 0 else solve([dx, dy, dz], x_sym, y_sym, z_sym, dict=True)
@@ -300,7 +303,7 @@ def compute_equilibria(payoff_data):
             ):
                 equilibria.append(list(vertex))
 
-    elif game_class == "2P4S":
+    elif game_class == "1Pop4S":
         z_sym = Symbol('z')
         dx, dy, dz = replicator_2p4s([x_sym, y_sym, z_sym], time_0, payoff_data)
         mass_constraint = dx + dy + dz
@@ -316,3 +319,47 @@ def compute_equilibria(payoff_data):
         )
 
     return EquilibriumResult(equilibria, degenerate=degenerate, message=message)
+
+
+@dataclass(frozen=True)
+class _RestPoint1D:
+    x: float
+    stable: bool
+    nonhyperbolic: bool = False
+
+
+def _coefficients_1d(payoffs):
+    A = np.asarray(payoffs, dtype=float)
+    if A.shape != (2, 2) or not np.isfinite(A).all():
+        raise ValueError("Expected a finite 2×2 payoff matrix.")
+    a, b, c, d = A.ravel()
+    return b - d, a - b - c + d
+
+
+def _analyze_1d(payoffs, atol=1e-12):
+    if not np.isfinite(atol) or atol < 0:
+        raise ValueError("atol must be finite and nonnegative.")
+    u, v = _coefficients_1d(payoffs)
+    zero = lambda z: abs(z) <= atol
+    if zero(u) and zero(v):
+        return (), True
+    left = v if zero(u) else u
+    right = -v if zero(u + v) else u + v
+    points = [_RestPoint1D(0., left < 0, zero(u)),
+              _RestPoint1D(1., right > 0, zero(u + v))]
+    if not zero(v):
+        x = -u / v
+        if 0 < x < 1 and not zero(u) and not zero(u + v):
+            points.append(_RestPoint1D(float(x), v < 0))
+    return tuple(sorted(points, key=lambda p: p.x)), False
+
+
+def replicator_1d(x, payoffs):
+    """Scalar/vector flow for a symmetric 2x2 game; x is first-strategy frequency.
+
+    Unlike the multi-coordinate ODE callbacks, this autonomous helper accepts
+    just x and the payoff matrix. Arrays of frequencies are supported.
+    """
+    x = np.asarray(x, dtype=float)
+    u, v = _coefficients_1d(payoffs)
+    return x * (1 - x) * (u + v * x)

@@ -53,9 +53,11 @@ pip install ".[notebook]"
 
 ## Features
 
-- Replicator dynamics for asymmetric 2-player / 2-strategy games (`2P2S`), symmetric 2-player / 3-strategy games (`2P3S`), symmetric 2-player / 4-strategy games (`2P4S`), and asymmetric 3-player / 2-strategy games (`3P2S`).
+- One-population symmetric 2×2 phase lines and one-parameter bifurcation diagrams, with customizable phase-line labels and curve styles.
+- Replicator dynamics for asymmetric 2-player / 2-strategy games (`2Pop2S`), symmetric 2-player / 3-strategy games (`1Pop3S`), symmetric 2-player / 4-strategy games (`1Pop4S`), and asymmetric 3-player / 2-strategy games (`3Pop2S`).
 - A curated catalogue of built-in example games with descriptions, references, parameter notes, and explanations of what each example illustrates.
 - Matplotlib phase portraits with trajectories, equilibria, speed fields, vector fields, and optional colored faces for 3D state spaces.
+- Reproducible grid-based default trajectories, with automatic one-dimensional flow arrows on triangle and square boundaries.
 - Equilibrium analysis with linear stability classification, Nash equilibria, strict Nash equilibria, and ESS checks where applicable.
 - A Jupyter widget for quick exploration of built-in example games.
 
@@ -120,7 +122,7 @@ Built-in games are available through `pn.examples.games`:
 ```python
 g = pn.examples.games.battle_of_the_sexes
 same_game = pn.examples.games("battle_of_the_sexes")
-pn.examples.games.by_class("2P2S")
+pn.examples.games.by_class("2Pop2S")
 ```
 
 Each catalogue game carries metadata:
@@ -141,12 +143,17 @@ main mathematical point illustrated by the example.
 
 ## Game Classes
 
-pyNamo currently supports four game classes:
+Game-class identifiers use population counts (`Pop`) and strategies per population
+(`S`), rather than the number of players in an interaction. A symmetric two-player
+interaction can be modeled in one population or in two separate populations.
 
-- `2P2S`: 2-player / 2-strategy games, represented by one payoff matrix per player.
-- `2P3S`: symmetric 2-player / 3-strategy games, represented by one `3 x 3` payoff matrix.
-- `2P4S`: symmetric 2-player / 4-strategy games, represented by one `4 x 4` payoff matrix.
-- `3P2S`: 3-player / 2-strategy games, represented by one `2 x 2 x 2` payoff tensor per player.
+pyNamo currently supports five game classes:
+
+- `1Pop2S`: symmetric 2-player / 2-strategy games in one population, represented by one `2 x 2` payoff matrix.
+- `2Pop2S`: 2-player / 2-strategy games, represented by one payoff matrix per player. In each matrix, rows are that player's own strategies and columns are the opponent's strategies.
+- `1Pop3S`: symmetric 2-player / 3-strategy games, represented by one `3 x 3` payoff matrix.
+- `1Pop4S`: symmetric 2-player / 4-strategy games, represented by one `4 x 4` payoff matrix.
+- `3Pop2S`: 3-player / 2-strategy games, represented by one `2 x 2 x 2` payoff tensor per player.
 
 For asymmetric 2-strategy games, each coordinate in a reduced state is the
 probability that the corresponding player uses their first listed strategy.
@@ -175,11 +182,17 @@ my_game = pn.Game(
 
 An asymmetric 2-player / 2-strategy game:
 
+Each payoff matrix uses its recipient as the focal player. The first matrix has
+player 1's strategies as rows and player 2's as columns; the second has player
+2's strategies as rows and player 1's as columns.
+
 ```python
 my_asymmetric_game = pn.Game(
     name="My Asymmetric Game",
     payoffs=(
+        # Player 1 rows; player 2 columns.
         np.array([[3, 0], [1, 2]], dtype=float),
+        # Player 2 rows; player 1 columns.
         np.array([[2, 1], [0, 3]], dtype=float),
     ),
     player_strategy_labels=[["A", "B"], ["C", "D"]],
@@ -202,10 +215,19 @@ fig, ax = pn.phase_portrait(
     show_vector_field=True,
     vector_grid=18,
     trajectory_color="black",
-    trajectory_linewidth=0.8,
+    trajectory_linewidth=1.2,
     trajectory_arrows=[0.001],
 )
 ```
+
+When `starts` is omitted, pyNamo uses deterministically spaced starts. For `1Pop3S` and
+`2Pop2S`, it also treats every invariant edge as a one-dimensional phase line
+and places arrows halfway between consecutive edge equilibria. Control the exact
+number of generated trajectories with `trajectory_number`; explicit `starts` override it. Use
+`show_edge_flow=True` to combine explicit starts with boundary flow, or
+`show_edge_flow=False` to hide boundary flow. Boundary-arrow positions are
+determined by edge equilibria rather than the time-based `trajectory_arrows`
+values; `trajectory_arrows=[]` hides all arrowheads.
 
 Use one color per trajectory by passing a list:
 
@@ -264,12 +286,14 @@ rows = result.to_rows()
 For quick access to static equilibrium concepts:
 
 ```python
-pn.find_nash(pn.examples.games.good_rps)
-pn.find_strict_nash(pn.examples.games.good_rps)
-pn.find_ess(pn.examples.games.good_rps)
+pn.rest_points_nash(game=pn.examples.games.good_rps)
+pn.rest_points_strict_nash(game=pn.examples.games.good_rps)
+pn.rest_points_ess(game=pn.examples.games.good_rps)
 ```
 
-`find_ess` returns ESS only for symmetric games.
+These helpers filter the replicator rest points detected by pyNamo; they do not
+claim to enumerate additional or non-isolated Nash-equilibrium families.
+`rest_points_ess` returns ESS only for symmetric games.
 
 ## Stability Caveats
 
@@ -278,7 +302,7 @@ in the state space. This is important at boundaries because outward perturbation
 are not valid evolutionary deviations.
 
 Some equilibria are non-hyperbolic or belong to degenerate equilibrium sets. In
-these cases pyNamo emits warnings rather than forcing a classification. Non-isolated
+these cases pyNamo emits warnings rather than forcing a classification. For higher-dimensional games, non-isolated
 equilibrium manifolds are not plotted automatically; isolated equilibria are still
 shown when they can be identified.
 
@@ -313,3 +337,29 @@ and that `%matplotlib widget` has been evaluated.
 - `pynamo_egt/interactive.py`: Jupyter widget front-end.
 - `tutorial.ipynb`: notebook tutorial.
 - `tests/`: pytest test suite.
+
+## One-population phase lines and bifurcation diagrams
+
+```python
+coordination = pn.Game("Coordination", [[1, 0], [0, 1]], strategy_labels=["A", "B"])
+fig, ax = pn.phase_portrait(coordination, figsize=(8, 2.2))
+
+fig, ax = pn.bifurcation_diagram(
+    lambda s: [[s, 0], [1, 2]],
+    parameter_range=(-1, 4),
+    parameter_values=[1],
+    phase_line_values=[0, 2, 3],
+    phase_line_labels=["I", "II", "II"],
+    stable_linestyle="-", unstable_linestyle="--",
+)
+```
+
+For phase lines, x is the first strategy's frequency. `trajectory_arrows=None`
+centers one head between equilibria; explicit values are frequencies, and `[]`
+hides heads. Marker styling follows the existing API. `continuum_color` styles
+an entire stationary interval. Non-hyperbolic isolated points are classified
+from one-sided flow without special markers or warnings.
+
+Bifurcation diagrams sample a payoff-matrix function; they do not guarantee
+exhaustive bifurcation detection. See the two introductory tutorial sections
+and `help(pn.bifurcation_diagram)` for styling and parameter controls.

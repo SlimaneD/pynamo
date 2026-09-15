@@ -64,9 +64,13 @@ class Game:
 
             For asymmetric 2-player / 2-strategy games, pass a tuple
             `(payoff_player_1, payoff_player_2)`, where both matrices have
-            shape `(2, 2)`. Rows correspond to player 1's strategies and
-            columns correspond to player 2's strategies. Entry `[i, j]` is
-            evaluated at player 1 strategy i and player 2 strategy j.
+            shape `(2, 2)`. Each matrix uses the focal-player convention: its
+            rows are the strategies of the player receiving that matrix's
+            payoffs, and its columns are the opponent's strategies. Thus
+            `payoff_player_1[i, j]` is player 1's payoff when player 1 uses
+            strategy i and player 2 uses strategy j, while
+            `payoff_player_2[i, j]` is player 2's payoff when player 2 uses
+            strategy i and player 1 uses strategy j.
 
             For asymmetric 3-player / 2-strategy games, pass a tuple
             `(payoff_player_1, payoff_player_2, payoff_player_3)`, where each
@@ -123,7 +127,7 @@ class Game:
             Whether the game is treated as symmetric.
         game_class : str
             Supported pyNamo game-class identifier inferred from the payoff
-            data. Currently one of "2P2S", "2P3S", "2P4S", "3P2S", or
+            data. Currently one of "1Pop2S", "2Pop2S", "1Pop3S", "1Pop4S", "3Pop2S", or
             "unsupported".
 
         Notes
@@ -131,10 +135,11 @@ class Game:
         pyNamo currently supports only games whose payoff data identify one of
         the implemented low-dimensional plotting classes:
 
-        - "2P2S": asymmetric 2-player / 2-strategy games
-        - "2P3S": symmetric 2-player / 3-strategy games
-        - "2P4S": symmetric 2-player / 4-strategy games
-        - "3P2S": asymmetric 3-player / 2-strategy games
+        - "1Pop2S": symmetric 2-player / 2-strategy games in one population
+        - "2Pop2S": asymmetric 2-player / 2-strategy games
+        - "1Pop3S": symmetric 2-player / 3-strategy games
+        - "1Pop4S": symmetric 2-player / 4-strategy games
+        - "3Pop2S": asymmetric 3-player / 2-strategy games
 
         For equilibrium tables and trajectories, strategy order matters. In
         symmetric games, probability vectors follow `strategy_labels`. In
@@ -394,17 +399,19 @@ def infer_game_class(game) -> str:
     payoff_data = getattr(game, "payoff_data", game)
 
     if isinstance(payoff_data, np.ndarray):
+        if payoff_data.shape == (2, 2):
+            return "1Pop2S"
         if payoff_data.shape == (3, 3):
-            return "2P3S"
+            return "1Pop3S"
         if payoff_data.shape == (4, 4):
-            return "2P4S"
+            return "1Pop4S"
         return "unsupported"
 
     if isinstance(payoff_data, (tuple, list)) and payoff_data:
         first = payoff_data[0]
         if first.shape == (2, 2):
-            return "2P2S"
+            return "2Pop2S"
         if first.shape == (2, 2, 2):
-            return "3P2S"
+            return "3Pop2S"
 
     return "unsupported"

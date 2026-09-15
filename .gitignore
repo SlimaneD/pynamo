@@ -8,6 +8,7 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
+evolutionary_game_theory_101.ipynb
 
 # Test/cache artifacts
 .pytest_cache/

@@ -33,14 +33,12 @@ __all__ = [
     "plot_speed_field",
     "plot_vector_field",
     "phase_portrait",
+    "bifurcation_diagram",
 ]
 
 
 class PlottingWarning(RuntimeWarning):
     """Warning raised when plotting compresses analysis categories."""
-
-
-warnings.simplefilter("always", PlottingWarning)
 
 
 DEFAULT_PLOT_STYLE = {
@@ -70,9 +68,11 @@ DEFAULT_PLOT_STYLE = {
     "show_trajectories": True,
     "trajectory_step": 0.02,
     "trajectory_arrows": [0.02],
+    "trajectory_number": 4,
+    "show_edge_flow": None,
     "tmax": 45,
     "trajectory_color": "black",
-    "trajectory_linewidth": 0.8,
+    "trajectory_linewidth": 1.2,
     "arrow_size": 0.04,
     "arrow_width": 0.015,
     "trajectory_zorder": 20,
@@ -88,22 +88,22 @@ DEFAULT_PLOT_STYLE = {
 
 
 def simplex_to_plane_2p3s(x, y):
-    """Convert simplex coordinates to 2P3S plotting plane."""
+    """Convert simplex coordinates to 1Pop3S plotting plane."""
     return [-0.5 * x - y + 1, (np.sqrt(3) / 2) * x]
 
 
 def plane_to_simplex_2p3s(x, y):
-    """Convert 2P3S plotting plane coordinates back to simplex coordinates."""
+    """Convert 1Pop3S plotting plane coordinates back to simplex coordinates."""
     return [2 / 3 * np.sqrt(3) * y, -1 / 3 * np.sqrt(3) * y - x + 1]
 
 
 def simplex_to_plane_2p4s(x, y, z):
-    """Convert simplex coordinates to 2P4S 3D plotting space."""
+    """Convert simplex coordinates to 1Pop4S 3D plotting space."""
     return [0.5 * (-y + z + 1), np.sqrt(3) / 4 * (x - y - z + 1), -np.sqrt(13) / 4 * (x + y + z - 1)]
 
 
 def plane_to_simplex_2p4s(x, y, z):
-    """Convert 2P4S plotting space coordinates back to simplex coordinates."""
+    """Convert 1Pop4S plotting space coordinates back to simplex coordinates."""
     return [2 * (np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z), -x + np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z + 1, x + np.sqrt(3) / 3 * y - np.sqrt(13) / 13 * z]
 
 
@@ -214,6 +214,7 @@ def _draw_arrow_2d(start_point, end_point, fig, ax, arrow_size, arrow_width, arr
         edgecolor=arrow_color,
         alpha=1,
         zorder=zorder,
+        clip_on=False,
     )
     ax.add_collection(patch)
     return shaft + [head]
@@ -293,8 +294,8 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
     payoff_data : numpy.ndarray or tuple of numpy.ndarray
         Payoff representation used to infer the game class.
     ax : matplotlib axes
-        Axes on which the state space is drawn. Must be a 3D axes for 2P4S and
-        3P2S games.
+        Axes on which the state space is drawn. Must be a 3D axes for 1Pop4S and
+        3Pop2S games.
     font_size : float
         Font size for labels.
     zorder : float
@@ -306,7 +307,7 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
         Matplotlib artists created by the function.
     """
     game_class = infer_game_class(payoff_data)
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         strategy_1_vertex = simplex_to_plane_2p3s(1, 0)
         strategy_2_vertex = simplex_to_plane_2p3s(0, 1)
         strategy_3_vertex = simplex_to_plane_2p3s(0, 0)
@@ -332,15 +333,15 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
         ax.set_ylim(-0.10, (3 ** 0.5) / 2 + 0.05)
         ax.set_aspect('equal', adjustable='box')
         return lines + [strategy_1_label, strategy_2_label, strategy_3_label]
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         ax.set_xlabel(strategy_labels[0], fontsize=font_size)
         ax.set_ylabel(strategy_labels[1], fontsize=font_size)
         edges = [([0, 1], [0, 0]), ([1, 1], [0, 1]), ([1, 0], [1, 1]), ([0, 0], [1, 0])]
         lines = []
         for xs, ys in edges:
-            lines += plt.plot(xs, ys, color='black', zorder=zorder, alpha=1, clip_on=False)
+            lines += ax.plot(xs, ys, color='black', zorder=zorder, alpha=1, clip_on=False)
         return lines
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_zlim(0, 1)
@@ -379,7 +380,7 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
             e = corners[end_idx]
             artists += ax.plot([s[0], e[0]], [s[1], e[1]], [s[2], e[2]], color='black', zorder=zorder, alpha=1)
         return artists
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         strategy_1_vertex = simplex_to_plane_2p4s(1, 0, 0)
         strategy_2_vertex = simplex_to_plane_2p4s(0, 1, 0)
         strategy_3_vertex = simplex_to_plane_2p4s(0, 0, 1)
@@ -415,9 +416,9 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
 def draw_3d_faces(payoff_data, ax, face_colors=None, alpha=0.15, zorder=0):
     """Draw transparent colored faces for 3D state spaces."""
     game_class = infer_game_class(payoff_data)
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         faces = _tetrahedron_faces_2p4s()
-    elif game_class == "3P2S":
+    elif game_class == "3Pop2S":
         faces = _cube_faces_3p2s()
     else:
         return []
@@ -500,8 +501,8 @@ def plot_trajectory(
     Parameters
     ----------
     initial_state : sequence of float
-        Initial condition. For 2P2S and 3P2S games, entries are probabilities
-        of the first listed strategy for each player. For 2P3S and 2P4S games,
+        Initial condition. For 2Pop2S and 3Pop2S games, entries are probabilities
+        of the first listed strategy for each player. For 1Pop3S and 1Pop4S games,
         entries are reduced simplex coordinates.
     payoff_data : numpy.ndarray or tuple of numpy.ndarray
         Payoff representation used to infer the game class and compute the
@@ -542,7 +543,7 @@ def plot_trajectory(
     arrow_col = arrow_color if arrow_color is not None else line_color
     game_class = infer_game_class(payoff_data)
 
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         x0, y0 = initial_state
         forward_solution = odeint(dynamics.replicator_2p3s, [x0, y0], t, (payoff_data,))
         backward_solution = odeint(dynamics.reverse_replicator_2p3s, [x0, y0], t, (payoff_data,))
@@ -583,7 +584,7 @@ def plot_trajectory(
             )
         return forward_line + backward_line + arrow_artists
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         x0, y0 = initial_state
         forward_solution = odeint(dynamics.replicator_2p2s, [x0, y0], t, (payoff_data,))
         backward_solution = odeint(dynamics.reverse_replicator_2p2s, [x0, y0], t, (payoff_data,))
@@ -618,7 +619,7 @@ def plot_trajectory(
             )
         return forward_line + backward_line + arrow_artists
 
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         x0, y0, z0 = initial_state
         forward_solution = odeint(dynamics.replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
         backward_solution = odeint(dynamics.reverse_replicator_3p2s, [x0, y0, z0], t, (payoff_data,))
@@ -653,7 +654,7 @@ def plot_trajectory(
             )
         return forward_line + backward_line + arrow_artists
 
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         x0, y0, z0 = initial_state
         forward_solution = odeint(dynamics.replicator_2p4s, [x0, y0, z0], t, (payoff_data,))
         backward_solution = odeint(dynamics.reverse_replicator_2p4s, [x0, y0, z0], t, (payoff_data,))
@@ -748,9 +749,9 @@ def plot_equilibria(
     unstable_plotted_as_source = False
 
     def _point_to_plot(equilibrium):
-        if result.game_class == "2P3S":
+        if result.game_class == "1Pop3S":
             return np.array(simplex_to_plane_2p3s(equilibrium.reduced_position[0], equilibrium.reduced_position[1]))
-        if result.game_class == "2P4S":
+        if result.game_class == "1Pop4S":
             return np.array(
                 simplex_to_plane_2p4s(
                     equilibrium.reduced_position[0],
@@ -787,12 +788,12 @@ def plot_equilibria(
         )
 
     def _to_raw(point):
-        if result.game_class == "2P3S":
+        if result.game_class == "1Pop3S":
             r, p = plane_to_simplex_2p3s(point[0], point[1])
             return [r, p, 1 - r - p]
-        if result.game_class == "2P2S":
+        if result.game_class == "2Pop2S":
             return point.tolist()
-        if result.game_class in ("3P2S", "2P4S"):
+        if result.game_class in ("3Pop2S", "1Pop4S"):
             return point.tolist()
         return point.tolist()
 
@@ -830,7 +831,7 @@ def plot_equilibria(
         if not points:
             return
         pts = np.array(points)
-        if result.game_class in ("3P2S", "2P4S"):
+        if result.game_class in ("3Pop2S", "1Pop4S"):
             _plot_spheres(pts, color)
         else:
             ax.scatter(
@@ -848,7 +849,7 @@ def plot_equilibria(
         if not points:
             return
         pts = np.array(points)
-        if result.game_class in ("3P2S", "2P4S"):
+        if result.game_class in ("3Pop2S", "1Pop4S"):
             _plot_spheres(pts, 'gray', alpha=0.45)
         else:
             ax.scatter(
@@ -922,23 +923,88 @@ def plot_vector_field(
     """
     game_class = infer_game_class(payoff_data)
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         points, vectors = _vector_field_2p2s(payoff_data, grid, margin)
         return _quiver_2d(ax, points, vectors, color, alpha, length, width, zorder, normalize)
 
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         points, vectors = _vector_field_2p3s(payoff_data, grid, margin)
         return _quiver_2d(ax, points, vectors, color, alpha, length, width, zorder, normalize)
 
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         points, vectors = _vector_field_3p2s(payoff_data, grid, margin)
         return _quiver_3d(ax, points, vectors, color, alpha, length, zorder, normalize)
 
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         points, vectors = _vector_field_2p4s(payoff_data, grid, margin)
         return _quiver_3d(ax, points, vectors, color, alpha, length, zorder, normalize)
 
     raise ValueError(f"Unsupported game class: {game_class}")
+
+
+def _plot_edge_flow(
+    *, game_class, payoff_data, fig, ax, show_arrows,
+    trajectory_color, trajectory_linewidth, arrow_size, arrow_width, zorder,
+):
+    """Draw exact one-dimensional flow on invariant edges of 2D state spaces."""
+    if game_class == "1Pop3S":
+        matrix = np.asarray(payoff_data, dtype=float)
+        edge_specs = []
+        for first, second in ((0, 1), (0, 2), (1, 2)):
+            edge_matrix = matrix[np.ix_([first, second], [first, second])]
+
+            def coordinates(frequency, first=first, second=second):
+                state = np.zeros(3)
+                state[first] = frequency
+                state[second] = 1 - frequency
+                return np.asarray(simplex_to_plane_2p3s(state[0], state[1]))
+
+            edge_specs.append((edge_matrix, coordinates))
+    else:
+        player_1, player_2 = (np.asarray(matrix, dtype=float) for matrix in payoff_data)
+        edge_specs = []
+        for opponent_frequency in (0.0, 1.0):
+            fitness = player_1 @ np.array([opponent_frequency, 1 - opponent_frequency])
+            edge_matrix = np.repeat(fitness[:, None], 2, axis=1)
+            edge_specs.append(
+                (edge_matrix, lambda frequency, fixed=opponent_frequency: np.array([frequency, fixed]))
+            )
+        for opponent_frequency in (0.0, 1.0):
+            fitness = player_2 @ np.array([opponent_frequency, 1 - opponent_frequency])
+            edge_matrix = np.repeat(fitness[:, None], 2, axis=1)
+            edge_specs.append(
+                (edge_matrix, lambda frequency, fixed=opponent_frequency: np.array([fixed, frequency]))
+            )
+
+    for edge_matrix, coordinates in edge_specs:
+        points, continuum = dynamics._analyze_1d(edge_matrix)
+        start, end = coordinates(0), coordinates(1)
+        ax.plot(
+            [start[0], end[0]], [start[1], end[1]],
+            color=trajectory_color, linewidth=trajectory_linewidth,
+            zorder=zorder, clip_on=False,
+        )
+        if continuum or not show_arrows:
+            continue
+
+        positions = [
+            (left.x + right.x) / 2
+            for left, right in zip(points[:-1], points[1:])
+        ]
+        for frequency in positions:
+            direction = np.sign(dynamics.replicator_1d(frequency, edge_matrix))
+            if direction == 0:
+                continue
+            _draw_arrow_2d(
+                coordinates(frequency - direction * 0.01),
+                coordinates(frequency),
+                fig,
+                ax,
+                arrow_width=arrow_width,
+                arrow_size=arrow_size,
+                arrow_color=trajectory_color,
+                zorder=zorder,
+            )
 
 
 def phase_portrait(
@@ -946,7 +1012,7 @@ def phase_portrait(
     *,
     fig=None,
     ax=None,
-    figsize=DEFAULT_PLOT_STYLE["figsize"],
+    figsize=None,
     view_elev=DEFAULT_PLOT_STYLE["view_elev"],
     view_azim=DEFAULT_PLOT_STYLE["view_azim"],
     xlabel=None,
@@ -955,6 +1021,8 @@ def phase_portrait(
     title_pad=18,
     starts=None,
     random_state=None,
+    trajectory_number=DEFAULT_PLOT_STYLE["trajectory_number"],
+    show_edge_flow=DEFAULT_PLOT_STYLE["show_edge_flow"],
     simplex_font_size=DEFAULT_PLOT_STYLE["simplex_font_size"],
     simplex_zorder=DEFAULT_PLOT_STYLE["simplex_zorder"],
     show_speed=DEFAULT_PLOT_STYLE["show_speed"],
@@ -980,7 +1048,7 @@ def phase_portrait(
     trajectory_arrows=None,
     tmax=DEFAULT_PLOT_STYLE["tmax"],
     trajectory_color=DEFAULT_PLOT_STYLE["trajectory_color"],
-    trajectory_linewidth=DEFAULT_PLOT_STYLE["trajectory_linewidth"],
+    trajectory_linewidth=None,
     arrow_size=DEFAULT_PLOT_STYLE["arrow_size"],
     arrow_width=DEFAULT_PLOT_STYLE["arrow_width"],
     trajectory_zorder=DEFAULT_PLOT_STYLE["trajectory_zorder"],
@@ -992,6 +1060,7 @@ def phase_portrait(
     equilibrium_size=DEFAULT_PLOT_STYLE["equilibrium_size"],
     equilibrium_edgecolor=DEFAULT_PLOT_STYLE["equilibrium_edgecolor"],
     equilibrium_zorder=DEFAULT_PLOT_STYLE["equilibrium_zorder"],
+    continuum_color="tab:purple",
 ):
     """Plot replicator dynamics for a supported game.
 
@@ -999,16 +1068,28 @@ def phase_portrait(
     state space for the game class and can optionally add a speed field, vector
     field, trajectories, and equilibria.
 
+    A single symmetric 2x2 matrix selects a one-population phase line
+    (1Pop2S), with x the first strategy's frequency. Endpoint labels come from
+    the game. xlabel is optional; ylabel and zorder controls have no effect.
+    Layering is fixed: frame, arrowheads, then equilibrium markers.
+    trajectory_arrows=None places centered heads between equilibria; a list
+    supplies frequencies in (0,1), and [] hides heads. Arrow positions cannot
+    be equilibria. Arrow size/width are display-scaled in 1D (defaults 10-point
+    length and 3.75-point half-width). The line defaults to 1.2-point thickness.
+    show_equilibria=False hides markers but analysis still positions arrows.
+    continuum_color colors an entire stationary interval without arrows.
+    Integration, speed/vector field, and 3D options do not apply to phase lines.
+
     Parameters
     ----------
     game : pn.Game
         Game object to plot. The game class is inferred from the payoff data.
-        Supported classes are "2P2S", "2P3S", "2P4S", and "3P2S".
+        Supported classes are "1Pop2S", "2Pop2S", "1Pop3S", "1Pop4S", and "3Pop2S".
     fig : matplotlib.figure.Figure, optional
         Existing Matplotlib figure. If None, a new figure is created.
     ax : matplotlib.axes.Axes, optional
         Existing Matplotlib axes. If None, new axes are created. A 3D axis is
-        created automatically for 2P4S and 3P2S games.
+        created automatically for 1Pop4S and 3Pop2S games.
     figsize : tuple, default=(6, 6)
         Size of the figure when a new figure is created.
     view_elev : float, default=25
@@ -1022,34 +1103,47 @@ def phase_portrait(
         Padding between the plot title and the axes. Increasing this is useful
         when title text is close to simplex labels.
     starts : list of list of float, optional
-        Initial conditions for trajectories. If None, four random initial
-        conditions are generated. All supplied coordinates must lie between 0
-        and 1.
+        Initial conditions for trajectories. If None, deterministic interior
+        automatically spaced interior points are generated. All supplied
+        coordinates must lie between 0 and 1. Supplying starts overrides this
+        generation.
 
-        For 2P2S games, each start is [x, y], where x is the probability that
+        For 2Pop2S games, each start is [x, y], where x is the probability that
         player 1 uses their first listed strategy and y is the probability that
         player 2 uses their first listed strategy.
 
-        For 3P2S games, each start is [x, y, z], where each coordinate is the
+        For 3Pop2S games, each start is [x, y, z], where each coordinate is the
         probability that the corresponding player uses their first listed
         strategy.
 
-        For 2P3S games, each start is [x1, x2], the first two coordinates of
+        For 1Pop3S games, each start is [x1, x2], the first two coordinates of
         the population state. The third coordinate is 1 - x1 - x2, so starts
         must also satisfy x1 + x2 <= 1.
 
-        For 2P4S games, each start is [x1, x2, x3], the first three coordinates
+        For 1Pop4S games, each start is [x1, x2, x3], the first three coordinates
         of the population state. The fourth coordinate is 1 - x1 - x2 - x3, so
         starts must also satisfy x1 + x2 + x3 <= 1.
     random_state : int or None, optional
-        Seed used when `starts` is None.
+        If supplied while `starts` is None, use the former random-start behavior
+        with this seed instead of the deterministic grid.
+    trajectory_number : int, default=4
+        Exact number of deterministic initial conditions generated when
+        `starts` is None. pyNamo recursively partitions a simplex or product of
+        simplices into approximately equal regions and starts one trajectory at
+        each region's centroid.
+    show_edge_flow : bool or None, optional
+        Draw invariant edges as one-dimensional phase lines, with arrows midway
+        between consecutive edge equilibria. None enables this by default for
+        1Pop3S and 2Pop2S only when starts are generated automatically. Explicit
+        True enables it for those classes with user-supplied starts; False hides
+        it. Edge flow is not drawn automatically for 3D classes.
     simplex_font_size : float, default=13
         Font size for simplex or cube labels.
     simplex_zorder : float, default=30
         Drawing order of the state-space frame and labels.
     show_speed : bool, default=True
         Whether to draw the speed field. Speed fields are currently drawn only
-        for 2D state spaces: 2P2S and 2P3S.
+        for 2D state spaces: 2Pop2S and 1Pop3S.
     speed_grid : int, default=60
         Grid density used to compute the speed field.
     speed_cmap : matplotlib colormap, default=plt.cm.Spectral
@@ -1080,12 +1174,12 @@ def phase_portrait(
         common length. If False, arrow lengths reflect the magnitude of the
         vector field.
     show_faces : bool, default=False
-        Whether to color the faces of 3D state spaces. Only affects 2P4S
-        tetrahedra and 3P2S cubes.
+        Whether to color the faces of 3D state spaces. Only affects 1Pop4S
+        tetrahedra and 3Pop2S cubes.
     face_colors : matplotlib color, list of colors, or None, optional
         Face colors used when `show_faces=True`. If None, pyNamo uses a soft
         default palette. A single color applies to every face. A list must have
-        four colors for 2P4S games or six colors for 3P2S games.
+        four colors for 1Pop4S games or six colors for 3Pop2S games.
     face_alpha : float, default=0.15
         Transparency of colored 3D faces.
     face_zorder : float, default=0
@@ -1098,7 +1192,10 @@ def phase_portrait(
         Positions at which to draw direction markers on forward trajectories.
         Values are fractions of the sampled trajectory, between 0 and 1. Thus the exact time at which the i_th arrow is drawn is trajectory_arrows[i]*tmax. Use an
         empty list `[]` to draw trajectories without arrows. If None, the
-        default arrow positions are used.
+        default arrow positions are used. Boundary-flow arrows are always placed
+        halfway between consecutive edge equilibria; their positions are not
+        taken from this time-based parameter. An empty list `[]` hides arrows on
+        both interior trajectories and boundary flows.
     tmax : float, default=45
         Time horizon for trajectory integration. pyNamo integrates both forward
         and backward trajectories from each initial condition.
@@ -1106,7 +1203,7 @@ def phase_portrait(
         Color of trajectories. A single color applies to all trajectories. A
         list assigns one color per trajectory and must have the same length as
         `starts`.
-    trajectory_linewidth : float, default=0.8
+    trajectory_linewidth : float, default=1.2
         Width of trajectory lines. Increase
         this for denser or publication figures; decrease it when combining many
         trajectories with speed or vector fields.
@@ -1147,22 +1244,38 @@ def phase_portrait(
     fig : matplotlib.figure.Figure
         Figure containing the plot.
     ax : matplotlib.axes.Axes
-        Axes containing the plot. This is a 3D axes object for 2P4S and 3P2S
+        Axes containing the plot. This is a 3D axes object for 1Pop4S and 3Pop2S
         games.
 
     Notes
     -----
     Equilibrium stability is computed from the linearization restricted to
-    admissible directions in the state space. Non-isolated equilibrium manifolds
-    are not plotted automatically. When stability cannot be classified
+    admissible directions in the state space. Higher-dimensional non-isolated
+    equilibrium manifolds are not plotted automatically. When stability cannot be classified
     conclusively, pyNamo emits a warning rather than forcing a classification.
     """
     payoff_data = _payoff_data(game)
     game_class = infer_game_class(game)
+    if game_class == "1Pop2S":
+        from ._one_dimensional import _phase_portrait_1d
+        return _phase_portrait_1d(
+            game, fig=fig, ax=ax, figsize=figsize or (7, 2.2), xlabel=xlabel,
+            title_pad=title_pad, simplex_font_size=simplex_font_size,
+            trajectory_color=trajectory_color,
+            trajectory_linewidth=DEFAULT_PLOT_STYLE["trajectory_linewidth"] if trajectory_linewidth is None else trajectory_linewidth,
+            trajectory_arrows=trajectory_arrows, show_trajectories=show_trajectories,
+            arrow_size=arrow_size, arrow_width=arrow_width,
+            show_equilibria=show_equilibria, equilibrium_size=equilibrium_size,
+            sink_color=sink_color, source_color=source_color,
+            equilibrium_edgecolor=equilibrium_edgecolor, continuum_color=continuum_color,
+        )
+    figsize = DEFAULT_PLOT_STYLE["figsize"] if figsize is None else figsize
+    trajectory_linewidth = DEFAULT_PLOT_STYLE["trajectory_linewidth"] if trajectory_linewidth is None else trajectory_linewidth
     labels = _strategy_labels(game, game_class)
     player_strategy_labels = _player_strategy_labels(game, game_class)
     player_labels = _player_labels(game, game_class)
     title = getattr(game, "name", None)
+    edge_arrow_positions = trajectory_arrows
     trajectory_arrows = (
         list(DEFAULT_PLOT_STYLE["trajectory_arrows"])
         if trajectory_arrows is None
@@ -1171,7 +1284,7 @@ def phase_portrait(
 
     fig, ax = _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim)
 
-    if show_faces and game_class in ("2P4S", "3P2S"):
+    if show_faces and game_class in ("1Pop4S", "3Pop2S"):
         draw_3d_faces(
             payoff_data,
             ax,
@@ -1184,7 +1297,7 @@ def phase_portrait(
     _set_default_axes_style(ax, game_class, labels, player_strategy_labels, player_labels)
     _apply_axis_label_overrides(ax, xlabel, ylabel, zlabel)
 
-    if show_speed and game_class in ("2P2S", "2P3S"):
+    if show_speed and game_class in ("2Pop2S", "1Pop3S"):
         x_region, y_region = _speed_regions(game_class)
         plot_speed_field(
             x_region=x_region,
@@ -1225,7 +1338,12 @@ def phase_portrait(
         )
 
     if show_trajectories:
-        starts = _default_starts(game_class, random_state) if starts is None else starts
+        generated_starts = starts is None
+        starts = (
+            _default_starts(game_class, random_state, trajectory_number)
+            if generated_starts
+            else starts
+        )
         trajectory_colors = _trajectory_colors(trajectory_color, len(starts))
         for start, color in zip(starts, trajectory_colors):
             plot_trajectory(
@@ -1244,6 +1362,35 @@ def phase_portrait(
                 arrow_color=color,
             )
 
+        edge_flow_enabled = (
+            generated_starts and game_class in ("1Pop3S", "2Pop2S")
+            if show_edge_flow is None
+            else show_edge_flow
+        )
+        if edge_flow_enabled:
+            if game_class not in ("1Pop3S", "2Pop2S"):
+                raise ValueError("show_edge_flow=True is supported only for 1Pop3S and 2Pop2S.")
+            edge_color = (
+                trajectory_color
+                if mcolors.is_color_like(trajectory_color)
+                else trajectory_color[0]
+            )
+            _plot_edge_flow(
+                game_class=game_class,
+                payoff_data=payoff_data,
+                fig=fig,
+                ax=ax,
+                show_arrows=not (
+                    edge_arrow_positions is not None
+                    and len(edge_arrow_positions) == 0
+                ),
+                trajectory_color=edge_color,
+                trajectory_linewidth=trajectory_linewidth,
+                arrow_size=arrow_size,
+                arrow_width=arrow_width,
+                zorder=trajectory_zorder,
+            )
+
     if title:
         ax.set_title(title, pad=title_pad)
 
@@ -1256,13 +1403,34 @@ def _payoff_data(game):
 
 def _strategy_labels(game, game_class):
     labels = getattr(game, "strategy_labels", None)
+    if game_class == "3Pop2S":
+        # Three-population cubes need one label per axis, whereas shared
+        # strategy labels contain only the two strategies. Preserve explicit
+        # three-axis labels used by catalogue games; otherwise construct the
+        # labels from each population and its first listed strategy.
+        if labels and len(labels) == 3:
+            return labels
+        player_strategy_labels = getattr(game, "player_strategy_labels", None)
+        player_labels = getattr(game, "player_labels", None)
+        if (
+            player_strategy_labels
+            and len(player_strategy_labels) == 3
+            and all(strategy_set for strategy_set in player_strategy_labels)
+        ):
+            if not player_labels or len(player_labels) != 3:
+                player_labels = ["Population 1", "Population 2", "Population 3"]
+            return [
+                f"{player_label}: Pr({strategy_labels[0]})"
+                for player_label, strategy_labels in zip(
+                    player_labels, player_strategy_labels
+                )
+            ]
+        return ["Population 1", "Population 2", "Population 3"]
     if labels:
         return labels
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         return ["Strategy 1", "Strategy 2"]
-    if game_class == "3P2S":
-        return ["Population 1", "Population 2", "Population 3"]
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         return ["Strategy 1", "Strategy 2", "Strategy 3", "Strategy 4"]
     return ["Strategy 1", "Strategy 2", "Strategy 3"]
 
@@ -1272,9 +1440,9 @@ def _player_strategy_labels(game, game_class):
     if labels:
         return labels
     shared = _strategy_labels(game, game_class)
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         return [shared, shared]
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         return [[label] for label in shared]
     return [shared]
 
@@ -1283,9 +1451,9 @@ def _player_labels(game, game_class):
     labels = getattr(game, "player_labels", None)
     if labels:
         return labels
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         return ["Population 1", "Population 2"]
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         return ["Population 1", "Population 2", "Population 3"]
     return ["Population"]
 
@@ -1319,7 +1487,7 @@ def _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim):
     if fig is None:
         fig = plt.figure(figsize=figsize)
 
-    if game_class in ("2P4S", "3P2S"):
+    if game_class in ("1Pop4S", "3Pop2S"):
         ax = fig.add_subplot(111, projection="3d")
         ax.set_box_aspect((1, 1, 1))
         ax.view_init(elev=view_elev, azim=view_azim)
@@ -1331,33 +1499,101 @@ def _get_or_create_axes(fig, ax, game_class, figsize, view_elev, view_azim):
 
 
 def _set_default_axes_style(ax, game_class, labels, player_strategy_labels, player_labels):
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_aspect("equal", adjustable="box")
         ax.set_xlabel(f"{player_labels[0]}: Pr({player_strategy_labels[0][0]})")
         ax.set_ylabel(f"{player_labels[1]}: Pr({player_strategy_labels[1][0]})")
-    elif game_class == "2P3S":
+    elif game_class == "1Pop3S":
         ax.axis("off")
-    elif game_class == "2P4S":
+    elif game_class == "1Pop4S":
         ax.set_axis_off()
 
 
 def _speed_regions(game_class):
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         return [0, 1], [0, np.sqrt(3 / 4)]
     return [0, 1], [0, 1]
 
 
-def _default_starts(game_class, random_state):
-    rng = np.random.default_rng(random_state)
-    if game_class == "2P3S":
-        return rng.dirichlet(np.ones(3), size=4)[:, :2].tolist()
-    if game_class == "2P4S":
-        return rng.dirichlet(np.ones(4), size=4)[:, :3].tolist()
-    if game_class in ("2P2S", "3P2S"):
-        return rng.uniform(0.05, 0.95, size=(4, 2 if game_class == "2P2S" else 3)).tolist()
+def _default_starts(game_class, random_state, trajectory_number=4):
+    if (
+        not isinstance(trajectory_number, int)
+        or isinstance(trajectory_number, bool)
+        or trajectory_number < 1
+    ):
+        raise ValueError("trajectory_number must be a positive integer.")
+
+    if random_state is not None:
+        rng = np.random.default_rng(random_state)
+        if game_class == "1Pop3S":
+            return rng.dirichlet(np.ones(3), size=trajectory_number)[:, :2].tolist()
+        if game_class == "1Pop4S":
+            return rng.dirichlet(np.ones(4), size=trajectory_number)[:, :3].tolist()
+        if game_class in ("2Pop2S", "3Pop2S"):
+            dimension = 2 if game_class == "2Pop2S" else 3
+            return rng.uniform(0.05, 0.95, size=(trajectory_number, dimension)).tolist()
+
+    if game_class == "1Pop3S":
+        return _simplex_partition_centroids(3, trajectory_number)[:, :2].tolist()
+    if game_class == "1Pop4S":
+        return _simplex_partition_centroids(4, trajectory_number)[:, :3].tolist()
+    if game_class == "2Pop2S":
+        return _box_partition_centroids(2, trajectory_number).tolist()
+    if game_class == "3Pop2S":
+        return _box_partition_centroids(3, trajectory_number).tolist()
     raise ValueError(f"Unsupported game class: {game_class}")
+
+
+def _simplex_partition_centroids(strategy_count, count):
+    """Return centroids of a deterministic recursive simplex partition."""
+    cells = [np.eye(strategy_count)]
+
+    def volume_measure(vertices):
+        edges = vertices[1:] - vertices[0]
+        return np.sqrt(max(np.linalg.det(edges @ edges.T), 0.0))
+
+    while len(cells) < count:
+        cell_index = max(range(len(cells)), key=lambda index: volume_measure(cells[index]))
+        vertices = cells.pop(cell_index)
+        pairs = [
+            (i, j)
+            for i in range(strategy_count)
+            for j in range(i + 1, strategy_count)
+        ]
+        first, second = max(
+            pairs,
+            key=lambda pair: np.linalg.norm(vertices[pair[0]] - vertices[pair[1]]),
+        )
+        midpoint = (vertices[first] + vertices[second]) / 2
+        child_1 = vertices.copy()
+        child_2 = vertices.copy()
+        child_1[first] = midpoint
+        child_2[second] = midpoint
+        cells.extend([child_1, child_2])
+
+    return np.asarray([cell.mean(axis=0) for cell in cells])
+
+
+def _box_partition_centroids(dimension, count):
+    """Return centroids of a deterministic recursive unit-box partition."""
+    boxes = [(np.zeros(dimension), np.ones(dimension))]
+    while len(boxes) < count:
+        box_index = max(
+            range(len(boxes)),
+            key=lambda index: np.prod(boxes[index][1] - boxes[index][0]),
+        )
+        lower, upper = boxes.pop(box_index)
+        split_dimension = int(np.argmax(upper - lower))
+        midpoint = (lower[split_dimension] + upper[split_dimension]) / 2
+        upper_1 = upper.copy()
+        upper_1[split_dimension] = midpoint
+        lower_2 = lower.copy()
+        lower_2[split_dimension] = midpoint
+        boxes.extend([(lower, upper_1), (lower_2, upper)])
+
+    return np.asarray([(lower + upper) / 2 for lower, upper in boxes])
 
 
 def _vector_field_2p2s(payoff_data, grid, margin):
@@ -1502,7 +1738,7 @@ def _matrix_to_colors(matrix, cmap):
 
 
 def _outside_2p3s_simplex(X, Y):
-    """Boolean mask for points lying outside the 2P3S simplex in plotting coordinates."""
+    """Boolean mask for points lying outside the 1Pop3S simplex in plotting coordinates."""
     mask = np.zeros(X.shape, dtype=bool)
     for i in range(len(X)):
         for j in range(len(X)):
@@ -1516,7 +1752,7 @@ def _outside_2p3s_simplex(X, Y):
 
 
 def _project_to_2p3s_simplex(X, Y):
-    """Orthogonally project out-of-bounds grid points back to the 2P3S simplex."""
+    """Orthogonally project out-of-bounds grid points back to the 1Pop3S simplex."""
     mask = _outside_2p3s_simplex(X, Y)
     for i in range(len(X)):
         for j in range(len(Y)):
@@ -1537,7 +1773,7 @@ def _project_to_2p3s_simplex(X, Y):
 
 
 def _speed_2p3s(x, y, payoff_data):
-    """Speed magnitude of the 2P3S replicator dynamics at plotting coordinates (x, y)."""
+    """Speed magnitude of the 1Pop3S replicator dynamics at plotting coordinates (x, y)."""
     r, p = plane_to_simplex_2p3s(x, y)
     vector = np.asarray(dynamics.replicator_2p3s([r, p], 0, payoff_data), dtype=float)
     start = np.asarray(simplex_to_plane_2p3s(r, p), dtype=float)
@@ -1546,7 +1782,7 @@ def _speed_2p3s(x, y, payoff_data):
 
 
 def _speed_grid_2p3s(X, Y, payoff_data):
-    """Fill a grid with speeds for 2P3S replicator dynamics."""
+    """Fill a grid with speeds for 1Pop3S replicator dynamics."""
     CALC = np.zeros(X.shape)
     for i in range(len(X)):
         for j in range(len(Y)):
@@ -1555,7 +1791,7 @@ def _speed_grid_2p3s(X, Y, payoff_data):
 
 
 def _speed_grid_2p2s(U, V, payoff_data):
-    """Fill a grid with speeds for 2P2S replicator dynamics."""
+    """Fill a grid with speeds for 2Pop2S replicator dynamics."""
     CALC = np.zeros(U.shape)
     for i in range(len(U)):
         for j in range(len(V)):
@@ -1576,7 +1812,7 @@ def plot_speed_field(x_region, y_region, step, payoff_data, ax, cmap, levels, zo
     step : int
         Grid density used to evaluate speed.
     payoff_data : numpy.ndarray or tuple of numpy.ndarray
-        Payoff representation of a 2P2S or 2P3S game.
+        Payoff representation of a 2Pop2S or 1Pop3S game.
     ax : matplotlib.axes.Axes
         Axes on which the speed field is drawn.
     cmap : matplotlib colormap
@@ -1596,7 +1832,7 @@ def plot_speed_field(x_region, y_region, step, payoff_data, ax, cmap, levels, zo
     y = np.linspace(y_region[0], y_region[1], step)
     X, Y = np.meshgrid(x, y)
 
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         X, Y = _project_to_2p3s_simplex(X, Y)
         C = _speed_grid_2p3s(X, Y, payoff_data)
         surf = ax.contourf(
@@ -1611,7 +1847,7 @@ def plot_speed_field(x_region, y_region, step, payoff_data, ax, cmap, levels, zo
         )
         return surf
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         C = _speed_grid_2p2s(X, Y, payoff_data)
         surf = ax.contourf(
             X,
@@ -1625,4 +1861,8 @@ def plot_speed_field(x_region, y_region, step, payoff_data, ax, cmap, levels, zo
         )
         return surf
 
-    raise NotImplementedError("Speed plot currently supports only 2P3S and 2P2S games.")
+    raise NotImplementedError("Speed plot currently supports only 1Pop3S and 2Pop2S games.")
+
+
+# Imported after plot defaults are defined; the shared renderer uses them.
+from ._one_dimensional import bifurcation_diagram

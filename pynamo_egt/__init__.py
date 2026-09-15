@@ -3,16 +3,17 @@ from importlib import import_module
 
 from . import analysis, drawer, dynamics, examples, game
 from .game import Game
-from .drawer import phase_portrait
+from .drawer import phase_portrait, bifurcation_diagram
 from .analysis import (
-    analyze_equilibria, equilibrium_table, find_nash, find_strict_nash, find_ess,
+    analyze_equilibria, equilibrium_table,
+    rest_points_nash, rest_points_strict_nash, rest_points_ess,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
-    "Game", "phase_portrait", "analyze_equilibria", "equilibrium_table",
-    "find_nash", "find_strict_nash", "find_ess", "analysis", "drawer",
-    "dynamics", "examples", "game", "interactive",
+    "Game", "phase_portrait", "bifurcation_diagram", "analyze_equilibria", "equilibrium_table",
+    "rest_points_nash", "rest_points_strict_nash", "rest_points_ess",
+    "analysis", "drawer", "dynamics", "examples", "game", "interactive",
 ]
 
 

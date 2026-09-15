@@ -23,17 +23,14 @@ __all__ = [
     "EquilibriumAnalysis",
     "analyze_equilibria",
     "equilibrium_table",
-    "find_nash",
-    "find_strict_nash",
-    "find_ess",
+    "rest_points_nash",
+    "rest_points_strict_nash",
+    "rest_points_ess",
 ]
 
 
 class InconclusiveStabilityWarning(RuntimeWarning):
     """Warning raised when stability cannot be classified by implemented tests."""
-
-
-warnings.simplefilter("always", InconclusiveStabilityWarning)
 
 
 @dataclass
@@ -62,8 +59,8 @@ class EquilibriumAnalysis:
     equilibria : list of AnalyzedEquilibrium
         One entry per detected replicator rest point in the game domain.
     game_class : str
-        Supported pyNamo game-class identifier: "2P2S", "2P3S", "2P4S", or
-        "3P2S".
+        Supported pyNamo game-class identifier: "2Pop2S", "1Pop3S", "1Pop4S", or
+        "3Pop2S".
     degenerate : bool, default=False
         True when the symbolic equilibrium solver detected a non-isolated or
         parametric equilibrium set.
@@ -73,8 +70,8 @@ class EquilibriumAnalysis:
     Notes
     -----
     Table positions are full mixed strategies. Entries follow the strategy order
-    supplied when defining the game. For asymmetric games, coordinates give action 0 probabilities in 2P2S
-    and tensor action 1 probabilities in 3P2S.
+    supplied when defining the game. For asymmetric games, coordinates give
+    action 0 (the first listed strategy) probabilities.
     """
 
     equilibria: List[AnalyzedEquilibrium]
@@ -98,8 +95,7 @@ class EquilibriumAnalysis:
         Notes
         -----
         The Position column follows the strategy order stored in the Game object.
-        In 2P2S coordinates give action 0 probabilities; in 3P2S they give
-        tensor action 1 probabilities.
+        In 2Pop2S and 3Pop2S, coordinates give action 0 probabilities.
         """
         return [_equilibrium_to_row(equilibrium, ndigits) for equilibrium in self.equilibria]
 
@@ -149,14 +145,35 @@ def analyze_equilibria(game) -> EquilibriumAnalysis:
     Notes
     -----
     Returned positions follow the strategy order supplied when defining the game.
-    Asymmetric coordinates give action 0 probabilities in 2P2S and tensor
-    action 1 probabilities in 3P2S.
+    Asymmetric coordinates give action 0 (the first listed strategy)
+    probabilities.
     Eigenvalue computations are numerical. Tiny imaginary parts below the
     internal tolerance are treated as numerical noise when filtering admissible
     eigendirections at boundary equilibria.
     """
     payoff_data = _payoff_data(game)
     game_class = infer_game_class(game)
+    if game_class == "1Pop2S":
+        points, continuum = dynamics._analyze_1d(payoff_data)
+        u, v = dynamics._coefficients_1d(payoff_data)
+        equilibria = []
+        for point in points:
+            x = point.x
+            full = np.array([x, 1-x])
+            nash, strict = _symmetric_nash_status(full, payoff_data, 1e-12)
+            eigenvalue = (1-2*x)*(u+v*x) + x*(1-x)*v
+            values, vectors = np.array([eigenvalue]), np.ones((1, 1))
+            equilibria.append(AnalyzedEquilibrium(
+                reduced_position=np.array([x]), full_position=full,
+                stability="sink" if point.stable else "source",
+                eigenvalues=values, eigenvectors=vectors,
+                admissible_eigenvalues=values, admissible_eigenvectors=vectors,
+                nash=nash, strict_nash=strict, ess=bool(point.stable),
+            ))
+        return EquilibriumAnalysis(
+            equilibria, game_class, degenerate=continuum,
+            message="Every frequency in [0, 1] is an equilibrium; no isolated points are enumerated." if continuum else None,
+        )
     raw_equilibria = dynamics.compute_equilibria(payoff_data)
     equilibria = []
 
@@ -235,8 +252,8 @@ def equilibrium_table(game, ndigits: int = 6):
     Notes
     -----
     The Position column follows the strategy order supplied when defining the
-    game. Asymmetric coordinates give action 0 probabilities in 2P2S and
-    tensor action 1 probabilities in 3P2S.
+    game. Asymmetric coordinates give action 0 (the first listed strategy)
+    probabilities.
 
     Only rest points returned by dynamics.compute_equilibria are classified.
     No additional Nash points or equilibrium families are introduced.
@@ -245,7 +262,7 @@ def equilibrium_table(game, ndigits: int = 6):
     return analyze_equilibria(game).to_dataframe(ndigits=ndigits)
 
 
-def find_nash(game):
+def rest_points_nash(game):
     """Return detected replicator rest points that satisfy the Nash condition.
 
     This filters the analyzed rest points; it does not enumerate the Nash set.
@@ -268,7 +285,7 @@ def find_nash(game):
     ]
 
 
-def find_strict_nash(game):
+def rest_points_strict_nash(game):
     """Return detected replicator rest points that are strict Nash.
 
     Parameters
@@ -289,7 +306,7 @@ def find_strict_nash(game):
     ]
 
 
-def find_ess(game):
+def rest_points_ess(game):
     """Return detected replicator rest points that are ESS in symmetric games.
 
     Parameters
@@ -320,19 +337,19 @@ def _payoff_data(game):
 
 
 def _eigen_data(reduced, payoff_data, game_class):
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         field = Matrix(dynamics.replicator_2p3s([x, y], 0, payoff_data))
         jacobian = field.jacobian(Matrix([x, y]))
         matrix = np.array(jacobian.subs([(x, reduced[0]), (y, reduced[1])]), dtype=float)
         return np.linalg.eig(matrix)
 
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         field = Matrix(dynamics.replicator_2p2s([x, y], 0, payoff_data))
         jacobian = field.jacobian(Matrix([x, y]))
         matrix = np.array(jacobian.subs([(x, reduced[0]), (y, reduced[1])]), dtype=float)
         return np.linalg.eig(matrix)
 
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         field = Matrix(dynamics.replicator_2p4s([x, y, z], 0, payoff_data))
         jacobian = field.jacobian(Matrix([x, y, z]))
         matrix = np.array(
@@ -341,7 +358,7 @@ def _eigen_data(reduced, payoff_data, game_class):
         )
         return np.linalg.eig(matrix)
 
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         matrix = _numeric_jacobian(
             lambda state: dynamics.replicator_3p2s(state, 0, payoff_data), reduced
         )
@@ -378,20 +395,20 @@ def _numeric_jacobian(field_function, point, eps: float = 1e-6):
 
 def _full_position(reduced, game_class):
     reduced = np.asarray(reduced, dtype=float)
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         return np.array([reduced[0], reduced[1], 1.0 - reduced.sum()])
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         return np.array([reduced[0], reduced[1], reduced[2], 1.0 - reduced.sum()])
     return reduced.copy()
 
 
 def _nash_status(reduced, payoff_data, game_class, tol: float = 1e-8):
     """Return whether a state in the game domain is Nash and strict Nash."""
-    if game_class in ("2P3S", "2P4S"):
+    if game_class in ("1Pop3S", "1Pop4S"):
         return _symmetric_nash_status(_full_position(reduced, game_class), payoff_data, tol)
-    if game_class == "2P2S":
+    if game_class == "2Pop2S":
         return _asymmetric_2p2s_nash_status(reduced, payoff_data, tol)
-    if game_class == "3P2S":
+    if game_class == "3Pop2S":
         return _three_player_two_strategy_nash_status(reduced, payoff_data, tol)
     return None, None
 
@@ -415,9 +432,9 @@ def _asymmetric_2p2s_nash_status(reduced, payoffs, tol: float):
 
 
 def _three_player_two_strategy_nash_status(reduced, payoff_tensors, tol: float):
-    probabilities_action_1 = np.asarray(reduced, dtype=float)
+    probabilities_action_0 = np.asarray(reduced, dtype=float)
     mixed_strategies = [
-        np.array([1.0 - prob, prob]) for prob in probabilities_action_1
+        np.array([prob, 1.0 - prob]) for prob in probabilities_action_0
     ]
 
     payoff_vectors = []
@@ -426,10 +443,10 @@ def _three_player_two_strategy_nash_status(reduced, payoff_tensors, tol: float):
             np.array(
                 [
                     _expected_payoff_for_action(
-                        tensor, probabilities_action_1, player_index, 0
+                        tensor, probabilities_action_0, player_index, 0
                     ),
                     _expected_payoff_for_action(
-                        tensor, probabilities_action_1, player_index, 1
+                        tensor, probabilities_action_0, player_index, 1
                     ),
                 ]
             )
@@ -438,7 +455,7 @@ def _three_player_two_strategy_nash_status(reduced, payoff_tensors, tol: float):
     return _mixed_strategy_best_response_status(mixed_strategies, payoff_vectors, tol)
 
 
-def _expected_payoff_for_action(payoff_tensor, probabilities_action_1, player_index, action):
+def _expected_payoff_for_action(payoff_tensor, probabilities_action_0, player_index, action):
     total = 0.0
     for a0 in (0, 1):
         for a1 in (0, 1):
@@ -451,8 +468,8 @@ def _expected_payoff_for_action(payoff_tensor, probabilities_action_1, player_in
                 for idx, action_idx in enumerate(actions):
                     if idx == player_index:
                         continue
-                    prob_action_1 = probabilities_action_1[idx]
-                    probability *= prob_action_1 if action_idx == 1 else 1.0 - prob_action_1
+                    prob_action_0 = probabilities_action_0[idx]
+                    probability *= prob_action_0 if action_idx == 0 else 1.0 - prob_action_0
 
                 total += payoff_tensor[a0, a1, a2] * probability
     return total
@@ -484,18 +501,20 @@ def _mixed_strategy_best_response_status(strategies, payoff_vectors, tol: float)
 
 def _is_state_in_domain(reduced, game_class, tol: float = 1e-9) -> bool:
     reduced = np.asarray(reduced, dtype=float)
-    if game_class in ("2P3S", "2P4S"):
+    if game_class == "1Pop2S":
+        return reduced.shape == (1,) and np.all(reduced >= -tol) and np.all(reduced <= 1.0 + tol)
+    if game_class in ("1Pop3S", "1Pop4S"):
         return np.all(reduced >= -tol) and reduced.sum() <= 1.0 + tol
-    if game_class in ("2P2S", "3P2S"):
+    if game_class in ("2Pop2S", "3Pop2S"):
         return np.all(reduced >= -tol) and np.all(reduced <= 1.0 + tol)
     return False
 
 
 def _is_interior_point(point, game_class, tol: float = 1e-9) -> bool:
     point = np.asarray(point, dtype=float)
-    if game_class in ("2P3S", "2P4S"):
+    if game_class in ("1Pop3S", "1Pop4S"):
         return np.all(point > tol) and point.sum() < 1.0 - tol
-    if game_class in ("2P2S", "3P2S"):
+    if game_class in ("2Pop2S", "3Pop2S"):
         return np.all(point > tol) and np.all(point < 1.0 - tol)
     return False
 
@@ -504,7 +523,7 @@ def _is_admissible_direction(point, direction, game_class, tol: float = 1e-9) ->
     point = np.asarray(point, dtype=float)
     direction = np.asarray(direction, dtype=float)
 
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         if abs(point[0]) <= tol and direction[0] < -tol:
             return False
         if abs(point[1]) <= tol and direction[1] < -tol:
@@ -513,7 +532,7 @@ def _is_admissible_direction(point, direction, game_class, tol: float = 1e-9) ->
             return False
         return True
 
-    if game_class in ("2P2S", "3P2S"):
+    if game_class in ("2Pop2S", "3Pop2S"):
         for coord, delta in zip(point, direction):
             if abs(coord) <= tol and delta < -tol:
                 return False
@@ -521,7 +540,7 @@ def _is_admissible_direction(point, direction, game_class, tol: float = 1e-9) ->
                 return False
         return True
 
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         if any(abs(point[idx]) <= tol and direction[idx] < -tol for idx in range(3)):
             return False
         if abs(1.0 - point.sum()) <= tol and direction.sum() > tol:
@@ -626,7 +645,7 @@ def _complete_repeated_boundary_eigenspaces(
 def _admissible_direction_candidates(point, game_class):
     point = np.asarray(point, dtype=float)
 
-    if game_class == "2P3S":
+    if game_class == "1Pop3S":
         full = _full_position(point, game_class)
         candidates = []
         for absent_strategy in np.flatnonzero(np.isclose(full, 0.0)):
@@ -637,7 +656,7 @@ def _admissible_direction_candidates(point, game_class):
                 candidates.append(direction_full[:2])
         return candidates
 
-    if game_class == "2P4S":
+    if game_class == "1Pop4S":
         full = _full_position(point, game_class)
         candidates = []
         for absent_strategy in np.flatnonzero(np.isclose(full, 0.0)):
@@ -719,7 +738,7 @@ def _classify_from_admissible_eigenvalues(admissible, skipped_complex_boundary, 
 
 
 def _is_ess_symmetric(reduced, payoff_data, game_class, tol: float = 1e-8) -> Optional[bool]:
-    if game_class not in ("2P3S", "2P4S"):
+    if game_class not in ("1Pop3S", "1Pop4S"):
         return None
 
     p = np.clip(_full_position(reduced, game_class), 0.0, 1.0)
@@ -762,9 +781,9 @@ def _equilibrium_to_row(equilibrium: AnalyzedEquilibrium, ndigits: int) -> dict:
     return {
         "Position": _format_array(equilibrium.full_position, ndigits),
         "Stability Status": equilibrium.stability,
-        "Nash": equilibrium.nash,
-        "ESS": "NA" if equilibrium.ess is None else equilibrium.ess,
-        "Strict Nash": equilibrium.strict_nash,
+        "Nash": None if equilibrium.nash is None else bool(equilibrium.nash),
+        "ESS": "NA" if equilibrium.ess is None else bool(equilibrium.ess),
+        "Strict Nash": None if equilibrium.strict_nash is None else bool(equilibrium.strict_nash),
         "Eigenvalues": _format_array(equilibrium.admissible_eigenvalues, ndigits),
         "Eigenvectors": _format_matrix(equilibrium.admissible_eigenvectors, ndigits),
         "Warning": equilibrium.warning,

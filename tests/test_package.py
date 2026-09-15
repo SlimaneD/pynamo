@@ -6,10 +6,14 @@ import pynamo_egt as pn
 def test_public_exports():
     assert pn.Game is pn.game.Game
     assert pn.phase_portrait is pn.drawer.phase_portrait
-    for name in ('analyze_equilibria', 'equilibrium_table', 'find_nash', 'find_strict_nash', 'find_ess'):
+    for name in (
+        'analyze_equilibria',
+        'equilibrium_table',
+        'rest_points_nash',
+        'rest_points_strict_nash',
+        'rest_points_ess',
+    ):
         assert getattr(pn, name) is getattr(pn.analysis, name)
-
-
 def test_core_import_without_notebook_dependencies():
     subprocess.run([sys.executable, '-c', '''
 import sys

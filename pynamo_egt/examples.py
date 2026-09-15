@@ -34,7 +34,7 @@ class GameCatalog:
     >>> import pynamo_egt as pn
     >>> pn.examples.games.good_rps
     >>> pn.examples.games("good_rps")
-    >>> pn.examples.games.by_class("2P2S")
+    >>> pn.examples.games.by_class("2Pop2S")
     """
 
     def __init__(self, games_by_name: Dict[str, Game]) -> None:
@@ -88,13 +88,19 @@ class GameCatalog:
         Parameters
         ----------
         game_class : str
-            One of "2P2S", "2P3S", "2P4S", or "3P2S".
+            One of "1Pop2S", "1Pop3S", "1Pop4S", "2Pop2S", or "3Pop2S".
+            Legacy identifiers are also accepted for compatibility.
 
         Returns
         -------
         dict of str to pn.Game
             Examples whose inferred game class matches `game_class`.
         """
+        # Accept legacy class names at this public lookup boundary.
+        game_class = {
+            "2P2S": "2Pop2S", "2P3S": "1Pop3S",
+            "2P4S": "1Pop4S", "3P2S": "3Pop2S",
+        }.get(game_class, game_class)
         return {
             name: game
             for name, game in self._games.items()
@@ -270,8 +276,48 @@ games = GameCatalog(
             illustrates="Interior center and cycling behavior in asymmetric two-population dynamics.",
             symmetric=False,
         ),
+        "prisoners_dilemma": Game(
+            "Prisoner's Dilemma",
+            np.array([[3, 0], [5, 1]], dtype=float),
+            strategy_labels=["Cooperate", "Defect"],
+            description="One-population Prisoner's Dilemma.",
+            reference="Standard evolutionary-game formulation.",
+            reference_note="The payoffs satisfy T > R > P > S.",
+            parameters="reward R = 3, sucker payoff S = 0, temptation T = 5, punishment P = 1.",
+            illustrates="Defection strictly dominates cooperation.",
+        ),
         "hawk_dove": Game(
             "Hawk-Dove",
+            np.array([[-1, 5], [0, 2.5]]),
+            strategy_labels=["H", "D"],
+            description="One-population Hawk-Dove contest game.",
+            reference="Maynard Smith & Price (1973); Sandholm (2010), Chapter 2.",
+            reference_note="Classical Hawk-Dove payoff convention.",
+            parameters="resource value v = 5 and fighting cost c = 7.",
+            illustrates="A stable mixed equilibrium under negative frequency dependence.",
+        ),
+        "coordination_game": Game(
+            "Coordination Game",
+            np.array([[2, 0], [0, 1]], dtype=float),
+            strategy_labels=["A", "B"],
+            description="One-population two-strategy coordination game.",
+            reference="Standard evolutionary-game formulation.",
+            reference_note="Each strategy is favored when sufficiently common.",
+            parameters="coordination payoffs 2 for A-A and 1 for B-B; mismatch payoff 0.",
+            illustrates="An unstable interior threshold separating two pure-strategy basins.",
+        ),
+        "mutualism_game": Game(
+            "Mutualism Game",
+            np.array([[3, 1], [2, 0]], dtype=float),
+            strategy_labels=["Cooperate", "Defect"],
+            description="One-population mutualism, also called a Harmony game.",
+            reference="Standard evolutionary-game formulation.",
+            reference_note="Cooperation has the higher payoff against either strategy.",
+            parameters="payoffs R = 3, S = 1, T = 2, P = 0.",
+            illustrates="Cooperation strictly dominates defection.",
+        ),
+        "two_population_hawk_dove": Game(
+            "Two-population Hawk-Dove",
             (
                 np.array([[-1, 5], [0, 2.5]]),
                 np.array([[-1, 5], [0, 2.5]]),
@@ -281,7 +327,7 @@ games = GameCatalog(
             reference="Maynard Smith & Price (1973); Sandholm (2010), Chapter 2.",
             reference_note="Classical Hawk-Dove payoff convention in two-population form.",
             parameters="resource value v = 5, fighting cost c = 7 in the equivalent Hawk-Dove normalization.",
-            illustrates="Stable mixed equilibrium in a two-strategy biological contest game.",
+            illustrates="An interior saddle and specialization into opposite Hawk-Dove roles.",
             symmetric=False,
         ),
         "battle_of_the_sexes": Game(
@@ -417,10 +463,11 @@ games = GameCatalog(
         "coordination_cube": Game(
             "Coordination Cube",
             tuple(_coordination_tensor() for _ in range(3)),
-            strategy_labels=["$x_A$", "$x_B$", "$x_C$"],
+            strategy_labels=["$x = P_1(A)$", "$y = P_2(A)$", "$z = P_3(A)$"],
+            player_strategy_labels=[["A", "B"] for _ in range(3)],
             description="Three-player coordination where everyone prefers matching actions.",
             reference="Standard coordination-game construction.",
-            reference_note="Included as a simple symmetric game represented in the 3P2S class.",
+            reference_note="Included as a simple symmetric game represented in the 3Pop2S class.",
             parameters="payoff 1 when all three players choose the same action; payoff 0 otherwise.",
             illustrates="Three-player cube geometry and coordination basins.",
             symmetric=False,
@@ -428,7 +475,8 @@ games = GameCatalog(
         "cyclic_mismatching_pennies": Game(
             "Cyclic Mismatching Pennies",
             _cyclic_mismatching_pennies_tensors(),
-            strategy_labels=["$x = P_1(T)$", "$y = P_2(T)$", "$z = P_3(T)$"],
+            strategy_labels=["$x = P_1(H)$", "$y = P_2(H)$", "$z = P_3(H)$"],
+            player_strategy_labels=[["H", "T"] for _ in range(3)],
             description=(
                 "Three-player cyclic mismatch game: player 1 mismatches player 2, "
                 "player 2 mismatches player 3, and player 3 mismatches player 1."
@@ -442,7 +490,8 @@ games = GameCatalog(
         "cyclic_matching_pennies": Game(
             "Cyclic Matching Pennies",
             _cyclic_matching_pennies_tensors(),
-            strategy_labels=["$x = P_1(T)$", "$y = P_2(T)$", "$z = P_3(T)$"],
+            strategy_labels=["$x = P_1(H)$", "$y = P_2(H)$", "$z = P_3(H)$"],
+            player_strategy_labels=[["H", "T"] for _ in range(3)],
             description=(
                 "Three-player cyclic matching game: player 1 matches player 2, "
                 "player 2 matches player 3, and player 3 matches player 1."
@@ -450,7 +499,7 @@ games = GameCatalog(
             reference="pyNamo companion variant of Sandholm/Jordan cyclic mismatching pennies.",
             reference_note="This matching version is included as the sign/convention companion to cyclic mismatching pennies.",
             parameters="payoff 1 for matching the next player in the cycle; payoff 0 otherwise.",
-            illustrates="Contrast between cyclic matching and cyclic mismatching incentives in 3P2S dynamics.",
+            illustrates="Contrast between cyclic matching and cyclic mismatching incentives in 3Pop2S dynamics.",
             symmetric=False,
         ),
     }
