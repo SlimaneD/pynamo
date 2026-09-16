@@ -363,3 +363,19 @@ from one-sided flow without special markers or warnings.
 Bifurcation diagrams sample a payoff-matrix function; they do not guarantee
 exhaustive bifurcation detection. See the two introductory tutorial sections
 and `help(pn.bifurcation_diagram)` for styling and parameter controls.
+
+## Possible future directions
+
+pyNamo focuses on analytical models whose state spaces can be visualized.
+Natural extensions include:
+
+- **More evolutionary dynamics and learning rules.** Refactor `dynamics.py`
+  around updating-rule objects, allowing each population or player to have its
+  own rule. Candidate additions include logit dynamics, best-response dynamics,
+  and differential equations for reinforcement learning and stochastic
+  fictitious play.
+- **Nonlinear frequency-dependent fitness.** Accept user-defined fitness
+  functions $f_i(x)$ in addition to payoff matrices.
+- **Equilibrium manifolds.** Detect continua of rest points, analyze their
+  stability, and plot them automatically when the result can be established
+  reliably. Report inconclusive cases explicitly.
