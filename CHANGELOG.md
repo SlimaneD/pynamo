@@ -36,7 +36,8 @@
 ### Documentation
 
 - Add introductory phase-line and bifurcation sections to both tutorial notebooks.
-- Reorganize the tutorials around the widget, one-population phase lines, the general mathematical model, supported game classes, higher-dimensional portraits, and bifurcation diagrams.
+- Reorganize the tutorials around the widget, mathematical model, quick portrait, game catalog, construction examples for every supported game class, and later analysis and visualization guidance.
+- Add a four-strategy game-construction example and practical guidance for viewing three-dimensional phase portraits.
 - Document deterministic trajectory placement, automatic boundary flow, coordinate conventions, equilibrium warnings, and publication-quality figure controls.
 
 ## 0.2.0 — 2026-09-08

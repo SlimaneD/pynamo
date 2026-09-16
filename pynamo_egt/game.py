@@ -133,7 +133,7 @@ class Game:
         Notes
         -----
         pyNamo currently supports only games whose payoff data identify one of
-        the implemented low-dimensional plotting classes:
+        the implemented classes with directly visualizable state spaces:
 
         - "1Pop2S": symmetric 2-player / 2-strategy games in one population
         - "2Pop2S": asymmetric 2-player / 2-strategy games
