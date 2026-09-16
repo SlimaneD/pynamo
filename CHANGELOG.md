@@ -38,6 +38,7 @@
 - Add introductory phase-line and bifurcation sections to both tutorial notebooks.
 - Reorganize the tutorials around the widget, mathematical model, quick portrait, game catalog, construction examples for every supported game class, and later analysis and visualization guidance.
 - Add a four-strategy game-construction example and practical guidance for viewing three-dimensional phase portraits.
+- Add worked face portraits for the ownership and cyclic mismatching-pennies games, with guidance on the limits of face dynamics for understanding the three-dimensional interior.
 - Document deterministic trajectory placement, automatic boundary flow, coordinate conventions, equilibrium warnings, and publication-quality figure controls.
 
 ## 0.2.0 — 2026-09-08
