@@ -311,9 +311,9 @@ def draw_state_space(strategy_labels, payoff_data, ax, font_size, zorder):
         strategy_1_vertex = simplex_to_plane_2p3s(1, 0)
         strategy_2_vertex = simplex_to_plane_2p3s(0, 1)
         strategy_3_vertex = simplex_to_plane_2p3s(0, 0)
-        strategy_1_label = ax.annotate(strategy_labels[0], (strategy_1_vertex[0] - 0.01, strategy_1_vertex[1] + 0.04), fontsize=font_size, zorder=zorder)
-        strategy_2_label = ax.annotate(strategy_labels[1], (strategy_2_vertex[0] - 0.05, strategy_2_vertex[1] - 0.06), fontsize=font_size, zorder=zorder)
-        strategy_3_label = ax.annotate(strategy_labels[2], (strategy_3_vertex[0] + 0.03, strategy_3_vertex[1] - 0.06), fontsize=font_size, zorder=zorder)
+        strategy_1_label = ax.annotate(strategy_labels[0], (strategy_1_vertex[0], strategy_1_vertex[1] + 0.04), ha="center", fontsize=font_size, zorder=zorder)
+        strategy_2_label = ax.annotate(strategy_labels[1], (strategy_2_vertex[0], strategy_2_vertex[1] - 0.08), ha="center", fontsize=font_size, zorder=zorder)
+        strategy_3_label = ax.annotate(strategy_labels[2], (strategy_3_vertex[0], strategy_3_vertex[1] - 0.08), ha="center", fontsize=font_size, zorder=zorder)
         edge_endpoints = (
             (strategy_1_vertex, strategy_2_vertex),
             (strategy_1_vertex, strategy_3_vertex),
