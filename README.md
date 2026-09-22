@@ -1,6 +1,7 @@
 # pyNamo-EGT
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/SlimaneD/pynamo/master?filepath=tutorial.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SlimaneD/pynamo/blob/master/tutorial_colab.ipynb)
 
 pyNamo-EGT is a Python package for plotting and analyzing replicator dynamics
 in evolutionary games. It focuses on game classes whose state spaces can be
