@@ -49,7 +49,7 @@ DEFAULT_PLOT_STYLE = {
     "simplex_zorder": 30,
     "show_speed": True,
     "speed_grid": 60,
-    "speed_cmap": plt.cm.Spectral,
+    "speed_cmap": plt.cm.Spectral_r,
     "speed_levels": 12,
     "speed_zorder": 10,
     "show_vector_field": False,
@@ -1146,7 +1146,7 @@ def phase_portrait(
         for 2D state spaces: 2Pop2S and 1Pop3S.
     speed_grid : int, default=60
         Grid density used to compute the speed field.
-    speed_cmap : matplotlib colormap, default=plt.cm.Spectral
+    speed_cmap : matplotlib colormap, default=plt.cm.Spectral_r
         Colormap used for the speed field.
     speed_levels : int, default=12
         Number of contour levels in the speed field.

@@ -8,10 +8,12 @@ from .analysis import (
     analyze_equilibria, equilibrium_table,
     rest_points_nash, rest_points_strict_nash, rest_points_ess,
 )
+from .export import phase_portrait_html
 
 __version__ = "0.3.0"
 __all__ = [
-    "Game", "phase_portrait", "bifurcation_diagram", "analyze_equilibria", "equilibrium_table",
+    "Game", "phase_portrait", "bifurcation_diagram", "phase_portrait_html",
+    "analyze_equilibria", "equilibrium_table",
     "rest_points_nash", "rest_points_strict_nash", "rest_points_ess",
     "analysis", "drawer", "dynamics", "examples", "game", "interactive",
 ]
