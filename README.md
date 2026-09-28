@@ -78,21 +78,23 @@ pip install numpy scipy matplotlib sympy pandas ipywidgets ipympl
 
 ## Installation
 
-pyNamo-EGT is currently distributed from GitHub. For ordinary notebook use, install with:
+Install from PyPI:
 
 ```bash
-pip install ".[notebook]"
+pip install pynamo-egt
 ```
 
-For core functionality only, without notebook/widget dependencies:
+For notebook and widget support (recommended for Jupyter users):
 
 ```bash
-pip install .
+pip install "pynamo-egt[notebook]"
 ```
 
-For development tests:
+To install from source (for development or to modify the code):
 
 ```bash
+git clone https://github.com/SlimaneD/pynamo.git
+cd pynamo
 pip install ".[dev]"
 python -m pytest -q
 ```
