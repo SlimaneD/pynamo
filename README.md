@@ -62,23 +62,9 @@ pip install ".[notebook]"
 - Equilibrium analysis with linear stability classification, Nash equilibria, strict Nash equilibria, and ESS checks where applicable.
 - A Jupyter widget for quick exploration of built-in example games.
 
-## Requirements
-
-- Python 3.12+
-- `numpy`, `scipy`, `matplotlib`, `sympy`, `pandas`
-- Optional for notebooks/widgets: `jupyter`, `ipykernel`, `ipywidgets`, `ipympl`
-
-Install dependencies in a virtual environment:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install numpy scipy matplotlib sympy pandas ipywidgets ipympl
-```
-
 ## Installation
 
-Install from PyPI:
+Requires Python 3.12+. Install from PyPI:
 
 ```bash
 pip install pynamo-egt
