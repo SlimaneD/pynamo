@@ -11,7 +11,20 @@ speed fields, vector fields, equilibria, and stability information.
 The package is designed for researchers, teachers, and students who want clear,
 publication-quality diagrams of theoretical phase portraits. Its high-level
 interface is built for Jupyter notebooks and produces informative figures with
-minimal code, while still exposing fine-grained controls for plotting details.
+minimal code, while still exposing fine-grained controls for plotting details. Its design is inspired by Dynamo (Sandholm, Dokumacı & Franchetti), the Mathematica package for diagrams of evolutionary game dynamics, and brings that approach to the Python ecosystem.
+
+## Gallery
+
+<table>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/SlimaneD/pynamo/master/release_figures/pynamo_egt_rps.png" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/SlimaneD/pynamo/master/release_figures/pynamo_egt_hawk_dove.png" width="100%"></td>
+  </tr>
+  <tr>
+    <td><img src="https://raw.githubusercontent.com/SlimaneD/pynamo/master/release_figures/pynamo_egt_cyclic_mismatching_pennies.png" width="100%"></td>
+    <td><img src="https://raw.githubusercontent.com/SlimaneD/pynamo/master/release_figures/pynamo_egt_four_strategy.png" width="100%"></td>
+  </tr>
+</table>
 
 ## Start Here
 
@@ -315,6 +328,18 @@ speed/vector fields, and inspect payoff data and equilibrium analysis.
 
 If 3D rotation does not work, make sure the notebook kernel has `ipympl` installed
 and that `%matplotlib widget` has been evaluated.
+
+## Related software and acknowledgements
+
+pyNamo's design is directly inspired by **Dynamo** (cited in full below), the Mathematica package for evolutionary game dynamics diagrams by Sandholm, Dokumaci, and Franchetti. Users who prefer Mathematica or need features not yet in pyNamo should consult Dynamo first.
+
+> W. H. Sandholm, E. Dokumaci, and F. Franchetti (2012). *Dynamo: Diagrams for Evolutionary Game Dynamics*. http://www.ssc.wisc.edu/~whs/dynamo.
+
+Several Python packages cover related but distinct ground:
+
+- **[EGTtools](https://github.com/Socrats/EGTTools)** (Fernández, 2023) — finite-population stochastic evolutionary dynamics (Moran process, pairwise comparison), fixation probabilities, and stationary distributions. Complements pyNamo for stochastic simulations; the two share a common payoff-matrix convention and can be used together.
+- **[Nashpy](https://nashpy.readthedocs.io)** — Nash equilibrium computation for 2-player games via support enumeration and Lemke–Howson. Complements pyNamo's equilibrium visualization with rigorous exhaustive enumeration.
+- **[egtplot](https://github.com/mirzaevinom/egtplot)** — simplex plots of replicator dynamics for 3-strategy games in Python; the closest predecessor to pyNamo's simplex functionality.
 
 ## Repository Structure
 
