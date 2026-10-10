@@ -10,7 +10,7 @@ from .analysis import (
 )
 from .export import phase_portrait_html
 
-__version__ = "0.3.2"
+__version__ = "0.3.3"
 __all__ = [
     "Game", "phase_portrait", "bifurcation_diagram", "phase_portrait_html",
     "analyze_equilibria", "equilibrium_table",
