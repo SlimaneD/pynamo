@@ -28,7 +28,7 @@ minimal code, while still exposing fine-grained controls for plotting details. I
 
 ## Start Here
 
-There are three main ways to try pyNamo-EGT.
+There are two main ways to try pyNamo-EGT without a local installation.
 
 **1. Full interactive tutorial in Binder**
 
@@ -53,17 +53,6 @@ Use Colab if you want a faster browser-based preview of the tutorial:
 
 The Colab notebook supports ordinary plotting cells, but not the interactive
 widget or rotatable 3D Matplotlib figures.
-
-**3. Local installation from GitHub**
-
-Use a local installation if you want to use pyNamo-EGT in your own notebooks or
-modify the code:
-
-```bash
-git clone https://github.com/SlimaneD/pynamo.git
-cd pynamo
-pip install ".[notebook]"
-```
 
 ## Features
 
@@ -338,7 +327,7 @@ pyNamo's design is directly inspired by **Dynamo** (cited in full below), the Ma
 Several Python packages cover related but distinct ground:
 
 - **[EGTtools](https://github.com/Socrats/EGTTools)** (Fernández, 2023) — finite-population stochastic evolutionary dynamics (Moran process, pairwise comparison), fixation probabilities, and stationary distributions. Complements pyNamo for stochastic simulations; the two share a common payoff-matrix convention and can be used together.
-- **[Nashpy](https://nashpy.readthedocs.io)** — Nash equilibrium computation for 2-player games via support enumeration and Lemke–Howson. Complements pyNamo's equilibrium visualization with rigorous exhaustive enumeration.
+- **[Nashpy](https://nashpy.readthedocs.io)** — Nash equilibrium computation and evolutionary dynamics for 2-player games. Covers support enumeration, vertex enumeration, and Lemke–Howson for equilibria, plus replicator dynamics, Moran processes (including on graphs), fictitious play, stochastic fictitious play, and introspection dynamics. Also notable for its extensive textbook-style documentation.
 - **[egtplot](https://github.com/mirzaevinom/egtplot)** — simplex plots of replicator dynamics for 3-strategy games in Python; the closest predecessor to pyNamo's simplex functionality.
 
 ## Repository Structure

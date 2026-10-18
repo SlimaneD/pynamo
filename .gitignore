@@ -26,6 +26,14 @@ dist/
 *.egg-info/
 
 TestingCode.ipynb
+OwnershipGame.ipynb
+Interoperability_with_EGTtools.ipynb
+
+# Editor
+.obsidian/
+
+# Nested repo clone
+pynamo/
 
 # Personal notes
 TODOpynamo.txt
