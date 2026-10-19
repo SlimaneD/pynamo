@@ -10,7 +10,14 @@ tags:
 authors:
   - name: Slimane Dridi
     orcid: 0000-0002-0159-9911
+    affiliation: 1
   - name: Benjamin Giraudon
+    affiliation: 2
+affiliations:
+  - name: Independent Researcher
+    index: 1
+  - name: Canonical Ltd.
+    index: 2
 date: 19 October 2026
 bibliography: paper.bib
 ---
@@ -26,7 +33,7 @@ The package covers the full analytical pipeline: defining a game by its payoff m
 
 # Statement of need
 
- Evolutionary game theory (EGT) studies how populations of agents (be they humans, animals, plants, bacteria, computers on a network, etc.) adapt to each other when they socially interact. The mathematical models in EGT usually specify a base *game* that describes the rules and consequences of the outcome of a social interaction, a *matching process* that determines who interacts with whom, and an *updating rule* that tells how the result of a social interaction affects the behavior of agents in future interactions. Biologists, economists, social scientists, computer scientists, and researchers in other fields rely on evolutionary game theory as a tool to answer fundamental questions in their respective fields.
+ Evolutionary game theory (EGT) studies how populations of agents (be they humans, animals, plants, bacteria, computers on a network, etc.) adapt to each other when they socially interact [@Alexander2023]. The mathematical models in EGT usually specify a base *game* that describes the rules and consequences of the outcome of a social interaction, a *matching process* that determines who interacts with whom, and an *updating rule* that tells how the result of a social interaction affects the behavior of agents in future interactions. Biologists, economists, social scientists, computer scientists, and researchers in other fields rely on evolutionary game theory as a tool to answer fundamental questions in their respective fields.
  
 When analyzing an evolutionary game, one often deals with non-linear ordinary differential equations (ODEs) that can produce complex behavior. These equations may have multiple rest points, with different stability properties, and sometimes display limit cycles, or even chaos in higher dimensions (\autoref{fig:examples}). One way to explore and better understand these dynamics is to plot the phase portrait associated with them. The phase portrait is a representation of a few selected trajectories on the state space of an ODE. Researchers and teachers would benefit greatly from having easy access to a free and open-source general-purpose library that allows one to graphically represent evolutionary game dynamics in all the visualizable classes of games.
  
@@ -36,9 +43,9 @@ Evolutionary game dynamics occur in the simplex or product of simplices. For a g
 
 The replicator dynamics then take the form
 $$\dot{x}_i = x_i(f_i(x) - \bar{f}(x)),$$
-where $f_i(x)$ is the fitness of strategy $i$ and $\bar{f}(x)$ is the population mean fitness. Even though $x \in \mathbb{R}^n$, the constraint $\sum_i x_i = 1$ restricts the state space to $\Delta_{n-1}$, which is an $(n-1)$-dimensional subset of $\mathbb{R}^n$. Analysis of rest point stability has to be restricted as well to this relevant state space. Hence one cannot rely solely standard ODE solvers and packages, as those would consider deviations in all of $\mathbb{R}^n$ (\autoref{fig:simplex}).
+where $f_i(x)$ is the fitness of strategy $i$ and $\bar{f}(x)$ is the population mean fitness. Even though $x \in \mathbb{R}^n$, the constraint $\sum_i x_i = 1$ restricts the state space to $\Delta_{n-1}$, which is an $(n-1)$-dimensional subset of $\mathbb{R}^n$. Analysis of rest point stability has to be restricted as well to this relevant state space. Once analysis is restricted to the relevant Hence one cannot rely solely standard ODE solvers and packages, as those would consider deviations in all of $\mathbb{R}^n$ (\autoref{fig:simplex}).
 
-![(A) The $\Delta_1$ simplex as a subset of $\mathbb{R}^2$. If we consider a two-player, two-strategy game with strategies called $S_1$ and $S_2$, and the respective frequencies of these strategies $x_1$ and $x_2$, the simplex is the line segment in $\mathbb{R}^2$ where $x_2=1-x_1$, and both $x_1 \geq 0$ and $x_2 \geq 0$. For the replicator dynamics to stay in the simplex, the population can only move along admissible directions, shown in green. Taking a direction in a non-admissible direction, in orange, would lead the population outside of the simplex and the state vector would no longer describe frequencies, i.e., proportions. (B) The projection of the simplex $\Delta_1$ onto $\mathbb{R}$. Note that we used a payoff matrix that makes the interior rest point the only stable one, as indicated by the blue arrows. \label{fig:simplex}](simplex_figure_AB.pdf){width=70%}
+![(A) The $\Delta_1$ simplex as a subset of $\mathbb{R}^2$. If we consider a two-player, two-strategy game with strategies called $S_1$ and $S_2$, and the respective frequencies of these strategies $x_1$ and $x_2$, the simplex is the line segment in $\mathbb{R}^2$ where $x_2=1-x_1$, and both $x_1 \geq 0$ and $x_2 \geq 0$. For the replicator dynamics to stay in the simplex, the population can only move along admissible directions, shown in green. Taking a direction in a non-admissible direction, in orange, would lead the population outside of the simplex and the state vector would no longer describe frequencies, i.e., proportions. (B) The projection of the simplex $\Delta_1$ onto $\mathbb{R}$. Note that we used a payoff matrix that makes the interior rest point the only stable one, as indicated by the blue arrows pointing inwards. \label{fig:simplex}](simplex_figure_AB.pdf){width=70%}
 
 
 # State of the field
