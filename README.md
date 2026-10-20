@@ -2,6 +2,7 @@
 
 [![Launch Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/SlimaneD/pynamo/master?filepath=tutorial.ipynb)
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SlimaneD/pynamo/blob/master/tutorial_colab.ipynb)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23498361.svg)](https://doi.org/10.5281/zenodo.23498361)
 
 pyNamo-EGT is a Python package for plotting and analyzing replicator dynamics
 in evolutionary games. It focuses on game classes whose state spaces can be
@@ -12,6 +13,20 @@ The package is designed for researchers, teachers, and students who want clear,
 publication-quality diagrams of theoretical phase portraits. Its high-level
 interface is built for Jupyter notebooks and produces informative figures with
 minimal code, while still exposing fine-grained controls for plotting details. Its design is inspired by Dynamo (Sandholm, Dokumacı & Franchetti), the Mathematica package for diagrams of evolutionary game dynamics, and brings that approach to the Python ecosystem.
+
+## Citing pyNamo-EGT
+
+If you use pyNamo-EGT in your research or teaching, please cite it as:
+
+```bibtex
+@software{dridi2026pynamo,
+  author  = {Dridi, Slimane and Giraudon, Benjamin},
+  title   = {{pyNamo-EGT}: Phase portraits of evolutionary game dynamics in {Python}},
+  year    = {2026},
+  doi     = {10.5281/zenodo.23498361},
+  url     = {https://doi.org/10.5281/zenodo.23498361}
+}
+```
 
 ## Gallery
 
