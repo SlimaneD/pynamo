@@ -343,6 +343,7 @@ Several Python packages cover related but distinct ground:
 
 - **[EGTtools](https://github.com/Socrats/EGTTools)** (Fernández, 2023) — finite-population stochastic evolutionary dynamics (Moran process, pairwise comparison), fixation probabilities, and stationary distributions. Complements pyNamo for stochastic simulations; the two share a common payoff-matrix convention and can be used together.
 - **[Nashpy](https://nashpy.readthedocs.io)** — Nash equilibrium computation and evolutionary dynamics for 2-player games. Covers support enumeration, vertex enumeration, and Lemke–Howson for equilibria, plus replicator dynamics, Moran processes (including on graphs), fictitious play, stochastic fictitious play, and introspection dynamics. Also notable for its extensive textbook-style documentation.
+- **[OpenSpiel](https://github.com/google-deepmind/open_spiel)** (Lanctot et al., 2019) — large RL framework with an `egt` module providing triangle plots for 1-population 3-strategy games and square plots for 2-population 2×2 games. No rest-point computation, stability classification, or Nash/ESS checks; phase lines, 4-strategy, and 3-population games have no visualization.
 - **[egtplot](https://github.com/mirzaevinom/egtplot)** — simplex plots of replicator dynamics for 3-strategy games in Python; the closest predecessor to pyNamo's simplex functionality.
 
 ## Repository Structure
