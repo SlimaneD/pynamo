@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 
+from . import _rest_points
 from .game import infer_game_class
 
 __all__ = [
@@ -25,6 +26,15 @@ __all__ = [
 
 class DegenerateEquilibriumWarning(RuntimeWarning):
     """Warning raised when equilibrium sets are non-isolated."""
+
+
+# Kept verbatim from the SymPy-based solver so existing output is unchanged.
+_DEGENERATE_MESSAGE = (
+    "Degenerate equilibrium solutions detected: SymPy returned a "
+    "parametric/non-isolated solution set. Non-isolated rest-point "
+    "families are not expanded into points; vertices and identifiable "
+    "isolated points are retained."
+)
 
 
 class EquilibriumResult(list):
@@ -154,10 +164,6 @@ def reverse_replicator_3p2s(state, t, payoff_tensors):
 
 def compute_equilibria(payoff_data):
     """Return rest points (equilibria) of the replicator dynamics for the given payoff tensors."""
-    from sympy import Symbol
-    from sympy.solvers import solve
-    from itertools import product
-
     game_class = infer_game_class(payoff_data)
     if game_class == "1Pop2S":
         points, continuum = _analyze_1d(payoff_data)
@@ -165,6 +171,22 @@ def compute_equilibria(payoff_data):
             [[p.x] for p in points], degenerate=continuum,
             message="Every frequency in [0, 1] is an equilibrium." if continuum else None,
         )
+    if game_class in ("1Pop3S", "1Pop4S"):
+        points, degenerate = _rest_points.symmetric_rest_points(payoff_data)
+        message = None
+        if degenerate:
+            message = _DEGENERATE_MESSAGE
+            warnings.warn(message, DegenerateEquilibriumWarning, stacklevel=2)
+        return EquilibriumResult(
+            [[float(value) for value in point[:-1]] for point in points],
+            degenerate=degenerate,
+            message=message,
+        )
+
+    from sympy import Symbol
+    from sympy.solvers import solve
+    from itertools import product
+
     time_0 = 0
     x_sym = Symbol('x')
     y_sym = Symbol('y')
@@ -238,12 +260,7 @@ def compute_equilibria(payoff_data):
     def _mark_degenerate():
         nonlocal degenerate, message
         degenerate = True
-        message = (
-            "Degenerate equilibrium solutions detected: SymPy returned a "
-            "parametric/non-isolated solution set. Non-isolated rest-point "
-            "families are not expanded into points; vertices and identifiable "
-            "isolated points are retained."
-        )
+        message = _DEGENERATE_MESSAGE
         warnings.warn(message, DegenerateEquilibriumWarning, stacklevel=3)
 
     def _contains_point(point, acc):
