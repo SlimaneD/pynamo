@@ -1,12 +1,13 @@
 """Replicator vector fields and rest-point computation for pyNamo games."""
 
 from dataclasses import dataclass
+from typing import Union
 import warnings
 
 import numpy as np
 
 from . import _rest_points
-from .game import infer_game_class
+from .game import PayoffCollection, PayoffMatrix, infer_game_class
 
 __all__ = [
     "DegenerateEquilibriumWarning",
@@ -162,7 +163,7 @@ def reverse_replicator_3p2s(state, t, payoff_tensors):
     return -replicator_3p2s(state, t, payoff_tensors)
 
 
-def compute_equilibria(payoff_data):
+def compute_equilibria(payoff_data: Union[PayoffMatrix, PayoffCollection]) -> EquilibriumResult:
     """Return rest points (equilibria) of the replicator dynamics for the given payoff tensors."""
     game_class = infer_game_class(payoff_data)
     if game_class == "1Pop2S":

@@ -1,5 +1,6 @@
 import time
 import warnings
+from typing import Iterator
 
 import numpy as np
 import pytest
@@ -10,7 +11,8 @@ from pynamo_egt._rest_points import to_fraction
 from sympy_oracle import sympy_rest_points
 
 
-def _random_games(n, count, seed, integers=True):
+def _random_games(n: int, count: int, seed: int, integers: bool = True) -> Iterator[np.ndarray]:
+    """Yield seeded random n×n payoff matrices (small integers or 2-decimal floats)."""
     rng = np.random.default_rng(seed)
     for _ in range(count):
         if integers:
@@ -19,13 +21,14 @@ def _random_games(n, count, seed, integers=True):
             yield np.round(rng.normal(size=(n, n)), 2)
 
 
-def _symmetric_velocity(payoff_matrix, reduced):
+def _symmetric_velocity(payoff_matrix: np.ndarray, reduced: np.ndarray) -> np.ndarray:
     full = np.append(reduced, 1 - np.sum(reduced))
     fitness = payoff_matrix @ full
     return full * (fitness - full @ fitness)
 
 
-def _compute(payoff_data):
+def _compute(payoff_data) -> dynamics.EquilibriumResult:
+    """Rest points with the degeneracy warning silenced."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", dynamics.DegenerateEquilibriumWarning)
         return dynamics.compute_equilibria(payoff_data)

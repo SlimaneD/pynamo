@@ -17,7 +17,7 @@ _FIELDS = {
 }
 
 
-def sympy_rest_points(payoff_data):
+def sympy_rest_points(payoff_data) -> tuple[list[list[float]], bool]:
     """Return ``(points, isolated)`` in SymPy's order.
 
     ``isolated`` is False when SymPy reports a parametric (non-isolated) or
