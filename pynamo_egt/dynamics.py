@@ -217,19 +217,7 @@ def compute_equilibria(payoff_data):
         return isolated, parametric, found_degeneracy
 
     def _is_vertex(point):
-        point = list(point)
-        if game_class in ("1Pop3S", "1Pop4S"):
-            origin = all(abs(coord) < 1e-9 for coord in point)
-            basis_vertex = (
-                sum(abs(coord - 1.0) < 1e-9 for coord in point) == 1
-                and sum(abs(coord) < 1e-9 for coord in point) == len(point) - 1
-            )
-            return origin or basis_vertex
-
-        if game_class in ("2Pop2S", "3Pop2S"):
-            return all(abs(coord) < 1e-9 or abs(coord - 1.0) < 1e-9 for coord in point)
-
-        return False
+        return all(abs(coord) < 1e-9 or abs(coord - 1.0) < 1e-9 for coord in point)
 
     def _point_in_parametric_branch(point, branches, symbols):
         substitutions = {
@@ -280,17 +268,7 @@ def compute_equilibria(payoff_data):
             ):
                 equilibria.append(list(point))
 
-    if game_class == "1Pop3S":
-        dx, dy = replicator_2p3s([x_sym, y_sym], time_0, payoff_data)
-        mass_constraint = dx + dy
-        solutions = [{}] if dx == 0 and dy == 0 else solve([dx, dy, mass_constraint], x_sym, y_sym, dict=True)
-        symbols = (x_sym, y_sym)
-        equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
-        if degenerate:
-            _mark_degenerate()
-        _add_missing_points([(1.0, 0.0), (0.0, 1.0), (0.0, 0.0)], parametric, symbols)
-
-    elif game_class == "2Pop2S":
+    if game_class == "2Pop2S":
         pay_p1, pay_p2 = payoff_data
         dx = _replicator_2p2s_population([x_sym, y_sym], time_0, pay_p1)
         dy = _replicator_2p2s_population([y_sym, x_sym], time_0, pay_p2)
@@ -319,21 +297,6 @@ def compute_equilibria(payoff_data):
                 )
             ):
                 equilibria.append(list(vertex))
-
-    elif game_class == "1Pop4S":
-        z_sym = Symbol('z')
-        dx, dy, dz = replicator_2p4s([x_sym, y_sym, z_sym], time_0, payoff_data)
-        mass_constraint = dx + dy + dz
-        solutions = [{}] if dx == 0 and dy == 0 and dz == 0 else solve([dx, dy, dz, mass_constraint], x_sym, y_sym, z_sym, dict=True)
-        symbols = (x_sym, y_sym, z_sym)
-        equilibria, parametric, degenerate = _split_solution_branches(solutions, symbols)
-        if degenerate:
-            _mark_degenerate()
-        _add_missing_points(
-            [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0), (0.0, 0.0, 0.0)],
-            parametric,
-            symbols,
-        )
 
     return EquilibriumResult(equilibria, degenerate=degenerate, message=message)
 
