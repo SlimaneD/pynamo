@@ -70,3 +70,9 @@ def test_legacy_catalogue_lookup(old, new):
     assert current
     assert games.by_class(old) == current
     assert all(g.game_class == new for g in current.values())
+
+
+def test_game_names_is_deprecated_but_still_works():
+    rps = game.Game("RPS", np.array([[0, -1, 1], [1, 0, -1], [-1, 1, 0]], dtype=float))
+    with pytest.warns(DeprecationWarning, match="game_names is deprecated"):
+        assert game.game_names([(7, rps)]) == {7: "RPS"}
