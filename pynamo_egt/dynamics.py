@@ -5,7 +5,7 @@ import warnings
 
 import numpy as np
 
-from .game import infer_game_class
+from .game import infer_game_class, require_supported_game_class
 
 __all__ = [
     "DegenerateEquilibriumWarning",
@@ -158,7 +158,7 @@ def compute_equilibria(payoff_data):
     from sympy.solvers import solve
     from itertools import product
 
-    game_class = infer_game_class(payoff_data)
+    game_class = require_supported_game_class(payoff_data)
     if game_class == "1Pop2S":
         points, continuum = _analyze_1d(payoff_data)
         return EquilibriumResult(
