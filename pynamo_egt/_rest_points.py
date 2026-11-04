@@ -52,19 +52,20 @@ def solve_linear(matrix, rhs):
 
 
 class FaceSystem:
-    """Rest-point conditions restricted to the face spanned by ``support``."""
+    """Linear rest-point conditions on one face, over all coordinates.
 
-    def __init__(self, support, matrix, rhs):
-        self.support = support
+    Coordinates fixed by the face (strategies outside the support) appear as
+    equations too, so a singular consistent system is exactly a continuum of
+    rest points lying in that face.
+    """
+
+    def __init__(self, matrix, rhs):
         self.matrix = matrix
         self.rhs = rhs
 
     def contains(self, point) -> bool:
-        if any(value != 0 for index, value in enumerate(point) if index not in self.support):
-            return False
-        restricted = [point[index] for index in self.support]
         return all(
-            sum(a * x for a, x in zip(row, restricted)) == b
+            sum(a * x for a, x in zip(row, point)) == b
             for row, b in zip(self.matrix, self.rhs)
         )
 
@@ -73,16 +74,18 @@ def symmetric_faces(payoff_matrix):
     """Yield the rest-point system on every face of a symmetric game's simplex."""
     A = [[to_fraction(value) for value in row] for row in payoff_matrix]
     n = len(A)
+    zero, one = Fraction(0), Fraction(1)
     for size in range(1, n + 1):
         for support in combinations(range(n), size):
             first = support[0]
-            matrix = [[A[i][j] - A[first][j] for j in support] for i in support[1:]]
-            matrix.append([Fraction(1)] * size)
-            rhs = [Fraction(0)] * (size - 1) + [Fraction(1)]
-            yield FaceSystem(support, matrix, rhs)
+            matrix = [[one if j == i else zero for j in range(n)] for i in range(n) if i not in support]
+            matrix += [[A[i][j] - A[first][j] for j in range(n)] for i in support[1:]]
+            matrix.append([one] * n)
+            rhs = [zero] * (n - 1) + [one]
+            yield FaceSystem(matrix, rhs)
 
 
-def enumerate_rest_points(faces, dimension, vertices):
+def enumerate_rest_points(faces, vertices):
     """Collect rest points face by face, preserving the legacy output contract.
 
     Returns ``(points, degenerate)``. ``points`` lists the isolated rest points
@@ -93,15 +96,11 @@ def enumerate_rest_points(faces, dimension, vertices):
     isolated = []
     continua = []
     for face in faces:
-        kind, solution = solve_linear(face.matrix, face.rhs)
+        kind, point = solve_linear(face.matrix, face.rhs)
         if kind == "continuum":
             continua.append(face)
-        elif kind == "unique":
-            point = [Fraction(0)] * dimension
-            for index, value in zip(face.support, solution):
-                point[index] = value
-            if point not in isolated:
-                isolated.append(point)
+        elif kind == "unique" and point not in isolated:
+            isolated.append(point)
 
     isolated = sorted(
         point for point in isolated if not any(face.contains(point) for face in continua)
@@ -116,4 +115,4 @@ def symmetric_rest_points(payoff_matrix):
     """Rest points of a symmetric game in full simplex coordinates."""
     n = len(payoff_matrix)
     vertices = [[Fraction(int(i == j)) for j in range(n)] for i in range(n)]
-    return enumerate_rest_points(symmetric_faces(payoff_matrix), n, vertices)
+    return enumerate_rest_points(symmetric_faces(payoff_matrix), vertices)
