@@ -5,15 +5,15 @@ Thanks for your interest in pyNamo-EGT! Bug reports, feature ideas, documentatio
 ## Asking questions and reporting problems
 
 - **Questions** ("how do I…?"): see [SUPPORT.md](SUPPORT.md).
-- **Bugs**: open a [bug report](https://github.com/SlimaneD/pynamo/issues/new?template=bug_report.yml) with a minimal example, what you expected and what happened.
-- **Ideas**: open a [feature request](https://github.com/SlimaneD/pynamo/issues/new?template=feature_request.yml). For larger changes, please discuss in an issue before writing code.
+- **Bugs**: open a [bug report](https://github.com/pynamo-egt/pynamo/issues/new?template=bug_report.yml) with a minimal example, what you expected and what happened.
+- **Ideas**: open a [feature request](https://github.com/pynamo-egt/pynamo/issues/new?template=feature_request.yml). For larger changes, please discuss in an issue before writing code.
 
 ## Development setup
 
 pyNamo-EGT requires Python 3.12 or newer.
 
 ```bash
-git clone https://github.com/SlimaneD/pynamo.git
+git clone https://github.com/pynamo-egt/pynamo.git
 cd pynamo
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate

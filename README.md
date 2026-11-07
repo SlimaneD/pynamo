@@ -336,7 +336,7 @@ and that `%matplotlib widget` has been evaluated.
 ## Getting help and contributing
 
 - Questions and where to find documentation: [SUPPORT.md](SUPPORT.md).
-- Bug reports and feature requests: [open an issue](https://github.com/SlimaneD/pynamo/issues/new/choose).
+- Bug reports and feature requests: [open an issue](https://github.com/pynamo-egt/pynamo/issues/new/choose).
 - Development setup, tests and pull-request conventions: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Related software and acknowledgements
