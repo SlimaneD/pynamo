@@ -37,6 +37,6 @@ intersphinx_mapping = {
 html_theme = "pydata_sphinx_theme"
 html_title = "pyNamo-EGT"
 html_theme_options = {
-    "github_url": "https://github.com/SlimaneD/pynamo",
+    "github_url": "https://github.com/pynamo-egt/pynamo",
     "navigation_with_keys": False,
 }

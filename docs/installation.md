@@ -14,4 +14,4 @@ Optional extras:
 | `plotly` | `pip install "pynamo-egt[plotly]"` | interactive HTML export with `phase_portrait_html` |
 
 To work on pyNamo-EGT itself, see the
-[contributing guide](https://github.com/SlimaneD/pynamo/blob/master/CONTRIBUTING.md).
+[contributing guide](https://github.com/pynamo-egt/pynamo/blob/master/CONTRIBUTING.md).

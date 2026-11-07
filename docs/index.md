@@ -22,4 +22,4 @@ api
 ## Citing pyNamo-EGT
 
 If you use pyNamo-EGT in research or teaching, please cite it using the metadata in
-[`CITATION.cff`](https://github.com/SlimaneD/pynamo/blob/master/CITATION.cff).
+[`CITATION.cff`](https://github.com/pynamo-egt/pynamo/blob/master/CITATION.cff).
